@@ -1,0 +1,263 @@
+﻿@model List<WebBanHang.Models.Message>
+@{
+    ViewData["Title"] = "Trò chuyện với " + ViewBag.UserName;
+    DateTime? lastTimestamp = null;
+    var finalTimestamp = Model.LastOrDefault()?.Timestamp;
+}
+
+
+<h4 class="mb-3">💬 Trò chuyện với <strong>@ViewBag.UserName</strong></h4>
+
+<!-- Chat container -->
+<div id="adminChatBox" class="border rounded shadow-sm p-3 mb-3 bg-light" style="max-height: 550px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #ccc transparent;">
+    @foreach (var msg in Model)
+    {
+        var isAdmin = msg.IsFromSupport;
+        var avatar = isAdmin ? "/images/logo.png" : msg.Sender?.AvatarUrl ?? "/images/default-avatar.png";
+        var senderName = isAdmin ? "Hỗ trợ viên" : msg.Sender?.FullName ?? "Người dùng";
+        var showTimeSeparator = false;
+
+        if (lastTimestamp == null || (msg.Timestamp - lastTimestamp.Value).TotalMinutes >= 60)
+        {
+            showTimeSeparator = true;
+            lastTimestamp = msg.Timestamp;
+        }
+
+        if (showTimeSeparator)
+        {
+            <div class="timestamp-separator text-center text-muted small my-3">
+                @msg.Timestamp.ToString("HH:mm dd/MM/yyyy")
+            </div>
+        }
+
+        <div class="chat-message d-flex @(isAdmin ? "justify-content-end" : "justify-content-start") mb-3">
+            <div class="text-container @(isAdmin ? "admin" : "user") d-flex flex-column align-items-@(isAdmin ? "end" : "start")">
+                <div class="chat-name text-muted small mb-1">@senderName</div>
+                <div class="message-row d-flex align-items-start @(isAdmin ? "flex-row-reverse" : "") gap-2">
+                    <img class="avatar" src="@avatar" alt="Avatar" />
+                    <div class="bubble @(isAdmin ? "bg-primary text-white" : "bg-light text-dark")">
+                        @msg.Content
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<form id="adminChatForm" class="d-flex gap-2" onsubmit="sendAdminMessage(event)">
+    <input type="text" id="adminMessageInput" class="form-control rounded-pill border-primary" placeholder="Nhập tin nhắn..." required autocomplete="off" />
+    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold">Gửi</button>
+</form>
+
+
+<style>
+    /* Scrollbar cho Chrome, Edge, Safari */
+    #adminChatBox::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    #adminChatBox::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    #adminChatBox::-webkit-scrollbar-thumb {
+        background-color: #bbb;
+        border-radius: 4px;
+    }
+    /* Scrollbar cho Firefox */
+    #adminChatBox {
+        scrollbar-width: thin;
+        scrollbar-color: #bbb transparent;
+    }
+
+    .user-msg {
+        background-color: #f8f9fa; /* màu nền sáng nhẹ của Bootstrap */
+        color: #212529; /* màu chữ tối */
+    }
+
+    .chat-message {
+        max-width: 100%;
+    }
+
+    .chat-name {
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: #555;
+        padding-left: 48px;
+    }
+
+    .avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 1px solid #ccc;
+        flex-shrink: 0;
+    }
+
+    .message-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding-left: 0;
+        max-width: 100%;
+    }
+
+    .bubble {
+        padding: 10px 14px;
+        border-radius: 16px;
+        max-width: 50vw;
+        width: fit-content;
+        word-break: break-word;
+        white-space: normal;
+        word-break: break-word;
+        line-height: 1.5;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        border: 1px solid #dee2e6;
+    }
+
+    .admin .chat-name {
+        text-align: right;
+        padding-left: 0;
+        padding-right: 55px;
+    }
+
+    .admin .message-row {
+        flex-direction: row-reverse;
+        text-align: right;
+    }
+
+    .admin .bubble {
+        background-color: #0d6efd !important;
+        color: white !important;
+    }
+
+    .user .bubble {
+        background-color: #f8f9fa;
+        color: #212529;
+    }
+
+    .timestamp-separator {
+        text-align: center;
+        font-size: 0.75rem;
+        color: #888;
+        margin: 12px 0;
+    }
+
+</style>
+
+@section Scripts {
+    <script>
+        let lastTimestamp = @(finalTimestamp != null
+                                                                    ? $"new Date({finalTimestamp.Value.Year}, {finalTimestamp.Value.Month - 1}, {finalTimestamp.Value.Day}, {finalTimestamp.Value.Hour}, {finalTimestamp.Value.Minute})"
+                                                                    : "null");
+</script>
+<script>
+    // Cuộn xuống dưới cùng sau khi load
+    const chatBox = document.getElementById("adminChatBox");
+    if (chatBox) {
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+</script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+
+    <script>
+
+                const connection = new signalR.HubConnectionBuilder()
+                    .withUrl("/chathub")
+                    .build();
+
+                connection.start().catch(err => console.error(err.toString()));
+
+                connection.on("ReceiveMessage", function (senderName, message, time, avatarUrl) {
+                    const isAdmin = senderName === "Hỗ trợ viên";
+                    const chatBox = document.getElementById("adminChatBox");
+                    if (!chatBox) return;
+
+                    const [timeStr, dateStr] = time.split(" ");
+                    const [hour, minute] = timeStr.split(":").map(Number);
+                    const [day, month, year] = dateStr.split("/").map(Number);
+                    const currentTimestamp = new Date(year, month - 1, day, hour, minute);
+
+                    if (!lastTimestamp || currentTimestamp - lastTimestamp >= 60 * 60 * 1000) {
+                        const separator = document.createElement("div");
+        separator.className = "timestamp-separator text-center text-muted small my-3";
+                        separator.textContent = time;
+                        chatBox.appendChild(separator);
+                        lastTimestamp = currentTimestamp;
+                    }
+
+
+                    // Wrapper
+                    const msgDiv = document.createElement("div");
+                    msgDiv.className = "chat-message d-flex " + (isAdmin ? "justify-content-end" : "justify-content-start") + " mb-3";
+
+                    // Container: quản lý bubble + name + row
+                    const containerDiv = document.createElement("div");
+                    containerDiv.className = (isAdmin ? "admin" : "user") + " text-container d-flex flex-column align-items-" + (isAdmin ? "end" : "start");
+
+                    // Tên người gửi
+                    const nameDiv = document.createElement("div");
+                    nameDiv.className = "chat-name text-muted small mb-1";
+                    nameDiv.textContent = senderName;
+
+                    // Dòng tin nhắn (avatar + bubble)
+                    const rowDiv = document.createElement("div");
+                    rowDiv.className = "message-row d-flex align-items-start gap-2 " + (isAdmin ? "flex-row-reverse" : "");
+
+                    // Avatar
+                    const avatarImg = document.createElement("img");
+                    avatarImg.className = "avatar";
+                    avatarImg.src = avatarUrl || "/images/default-avatar.png";
+                    avatarImg.alt = "Avatar";
+
+                    // Bubble
+                    const bubbleDiv = document.createElement("div");
+                    bubbleDiv.className = "bubble " + (isAdmin ? "bg-primary text-white" : "bg-light text-dark");
+                    bubbleDiv.innerHTML = `
+                        ${message}
+
+                    `;
+
+                    // Lắp ghép
+                    rowDiv.appendChild(avatarImg);
+                    rowDiv.appendChild(bubbleDiv);
+                    containerDiv.appendChild(nameDiv);
+                    containerDiv.appendChild(rowDiv);
+                    msgDiv.appendChild(containerDiv);
+
+                    chatBox.appendChild(msgDiv);
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                });
+                function sendAdminMessage(e) {
+                    e.preventDefault(); // Ngăn reload
+
+                    const input = document.getElementById("adminMessageInput");
+                    const message = input.value.trim();
+                    if (!message) return;
+
+                    const receiverId = "@ViewBag.UserId";
+
+                    fetch("/Admin/AdminChat/Send", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/x-www-form-urlencoded",
+                            "RequestVerificationToken": document.querySelector('input[name="__RequestVerificationToken"]').value
+                        },
+                        body: `receiverId=${encodeURIComponent(receiverId)}&content=${encodeURIComponent(message)}`
+                    }).then(res => {
+                        if (res.ok) {
+                            input.value = "";
+
+                            // 👉 Thêm đoạn này để gọi SignalR ngay sau khi gửi thành công
+        connection.invoke("SendMessage", "panel", message)
+                                .catch(err => console.error("Gửi SignalR lỗi:", err));
+                        }
+                    });
+                }
+
+    </script>
+
+}
