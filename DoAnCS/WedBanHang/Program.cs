@@ -21,6 +21,8 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<IProductRepository, EFProductRepository>();
 builder.Services.AddScoped<ICategoryRepository, EFCategoryRepository>();
 
+builder.Services.AddSingleton<IUserIdProvider, NameUserIdProvider>();
+
 builder.Services.AddScoped<IPromotionRepository, PromotionRepository>();
 
 builder.Services.AddScoped<EmailService>();
@@ -60,7 +62,7 @@ app.UseEndpoints(endpoints =>
     endpoints.MapControllerRoute(
     name: "default",
     pattern: "{controller=Product}/{action=Index}/{id?}");
-
+    endpoints.MapHub<ChatHub>("/chathub");
 });
 
 async Task CreateAdminUserAsync(WebApplication app)
