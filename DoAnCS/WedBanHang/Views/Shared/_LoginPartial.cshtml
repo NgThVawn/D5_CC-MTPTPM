@@ -1,0 +1,56 @@
+﻿@using Microsoft.AspNetCore.Identity
+@using WebBanHang.Models
+
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+
+<ul class="navbar-nav">
+    @if (SignInManager.IsSignedIn(User))
+    {
+        var currentUser = await UserManager.GetUserAsync(User);
+        var userName = currentUser?.FullName ?? currentUser?.UserName ?? "User";
+        var avatarUrl = currentUser?.AvatarUrl ?? "/images/default-avatar.png";
+
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-flex align-items-center" href="/User/Dashboard" role="button">
+                <img src="@avatarUrl" class="rounded-circle" style="width:32px; height:32px; object-fit:cover; margin-right: 8px;" />
+                <span>@userName</span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                    <a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/Index">Quản lý tài khoản</a>
+                </li>
+                <li>
+                    <form method="post" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Product", new { area = "" })" class="dropdown-item p-0">
+                        <button type="submit" class="btn btn-link dropdown-item">Đăng xuất</button>
+                    </form>
+                </li>
+            </ul>
+        </li>
+    }
+else
+{
+        <li class="nav-item">
+            <a class="btn btn-outline-primary rounded-pill px-3 me-2" id="register" asp-area="Identity" asp-page="/Account/Register">
+                <i class="bi bi-person-plus me-1"></i> Đăng ký
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="btn btn-primary rounded-pill px-3 text-white" id="login" asp-area="Identity" asp-page="/Account/Login">
+                <i class="bi bi-box-arrow-in-right me-1"></i> Đăng nhập
+            </a>
+        </li>
+}
+</ul>
+
+<style>
+    .btn {
+        transition: all 0.2s ease-in-out;
+    }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+        }
+
+</style>

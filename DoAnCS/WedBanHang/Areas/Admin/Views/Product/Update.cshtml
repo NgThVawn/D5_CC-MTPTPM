@@ -1,0 +1,218 @@
+﻿@model WedBanHang.Models.Product
+@using Microsoft.AspNetCore.Mvc.Rendering
+
+@{
+    ViewData["Title"] = "Cập nhật sản phẩm";
+}
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+<style>
+    .form-section {
+        background-color: #fff;
+        padding: 2rem;
+        border-radius: 0.75rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    h2.section-title {
+        font-weight: bold;
+        margin-bottom: 2rem;
+        color: #1f2937;
+    }
+
+    label {
+        font-weight: 600;
+    }
+
+    .btn-group-actions {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 2rem;
+    }
+
+    .image-wrapper {
+        width: 110px; /* Tăng thêm để có không gian cho nút x */
+        height: 110px;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .img-preview {
+        width: 100px;
+        height: 100px;
+        object-fit: cover;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+    }
+
+    .delete-btn {
+        position: absolute;
+        top: -5px;
+        right: -1px;
+        background-color: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 22px;
+        height: 22px;
+        font-size: 0.8rem;
+        line-height: 1;
+        padding: 0;
+        cursor: pointer;
+        z-index: 10;
+    }
+
+</style>
+
+<div class="container py-5">
+    <h2 class="section-title"><i class="fa-solid fa-pen-to-square me-2 text-warning"></i>@ViewData["Title"]</h2>
+
+    <div class="form-section">
+        <form asp-action="Update" method="post" enctype="multipart/form-data">
+            <input type="hidden" asp-for="Id" />
+
+            <div class="row g-4">
+                <!-- Left Column -->
+                <div class="col-lg-6">
+                    <div class="mb-3">
+                        <label asp-for="Name" class="form-label">Tên sản phẩm</label>
+                        <input asp-for="Name" class="form-control" />
+                        <span asp-validation-for="Name" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Price" class="form-label">Giá</label>
+                        <input asp-for="Price" class="form-control" />
+                        <span asp-validation-for="Price" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="CategoryId" class="form-label">Danh mục</label>
+                        <select asp-for="CategoryId" asp-items="@ViewBag.Categories" class="form-select"></select>
+                        <span asp-validation-for="CategoryId" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="StockQuantity" class="form-label">Tồn kho</label>
+                        <input asp-for="StockQuantity" class="form-control" id="stockQuantityInput" min="0" />
+                        <span asp-validation-for="StockQuantity" class="text-danger small"></span>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input asp-for="IsAvailable" class="form-check-input" id="isAvailableCheckbox" />
+                        <label asp-for="IsAvailable" class="form-check-label">Sẵn sàng bán</label>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Thêm hình ảnh sản phẩm</label>
+                        <input type="file" name="images" multiple class="form-control" />
+                    </div>
+
+                    <!-- Hidden container lưu ID ảnh bị xoá -->
+                    <div id="imagesToDeleteContainer"></div>                 
+                </div>
+
+                <!-- Right Column -->
+                <div class="col-lg-6">
+                    <div class="mb-3">
+                        <label asp-for="Description" class="form-label">Mô tả sản phẩm</label>
+                        <textarea asp-for="Description" class="form-control" rows="14"></textarea>
+                        <span asp-validation-for="Description" class="text-danger small"></span>
+                    </div>
+                    @if (Model.Images != null && Model.Images.Any())
+                    {
+                        <div class="mb-2">
+                            <label class="form-label fw-bold">Hình ảnh hiện tại:</label>
+                            <div class="row g-2" id="imageList">
+                                @foreach (var img in Model.Images)
+                                {
+                                    <div class="col-auto image-wrapper" data-image-id="@img.Id">
+                                        <img src="@img.Url" alt="Ảnh sản phẩm" class="img-preview" />
+                                        <button type="button" class="delete-btn" title="Xóa ảnh">x</button>
+                                    </div>
+                                }
+                            </div>
+
+                        </div>
+                    }
+                    else
+                    {
+                        <p><em>Không có hình ảnh</em></p>
+                    }
+                </div>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="btn-group-actions">              
+                <button type="submit" class="btn btn-warning text-white">
+                    <i class="fa-solid fa-pen me-1"></i> Cập nhật
+                </button>
+                <a asp-action="Index" class="btn btn-secondary">
+                    <i class="fa-solid fa-xmark me-1"></i> Huỷ
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.ckeditor.com/4.22.1/standard/ckeditor.js"></script>
+    <script>
+        CKEDITOR.replace('Description');
+        CKEDITOR.disableAutoInline = true;
+        CKEDITOR.on('instanceReady', function (ev) {
+            delete CKEDITOR.plugins.notification;
+        });
+
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const deleteButtons = document.querySelectorAll(".delete-btn");
+            const imagesToDeleteContainer = document.getElementById("imagesToDeleteContainer");
+
+            deleteButtons.forEach(button => {
+                button.addEventListener("click", function () {
+                    const wrapper = this.closest(".image-wrapper");
+                    const imageId = wrapper.getAttribute("data-image-id");
+
+                    // Ẩn ảnh
+                    wrapper.style.display = "none";
+
+                    // Tạo input hidden để gửi ID ảnh cần xoá
+                    const hiddenInput = document.createElement("input");
+                    hiddenInput.type = "hidden";
+                    hiddenInput.name = "DeletedImageIds";
+                    hiddenInput.value = imageId;
+                    imagesToDeleteContainer.appendChild(hiddenInput);
+                });
+            });
+
+            const stockInput = document.getElementById("stockQuantityInput");
+            if (stockInput) {
+                updateIsAvailableState();
+                stockInput.addEventListener("input", updateIsAvailableState);
+                stockInput.addEventListener("change", updateIsAvailableState);
+            }
+
+            function updateIsAvailableState() {
+                const stockInput = document.getElementById("stockQuantityInput");
+                const isAvailableCheckbox = document.getElementById("isAvailableCheckbox");
+
+                if (!stockInput || !isAvailableCheckbox) return;
+
+                const quantity = parseInt(stockInput.value);
+                if (isNaN(quantity) || quantity <= 0) {
+                    isAvailableCheckbox.checked = false;
+                    isAvailableCheckbox.disabled = true;
+                } else {
+                    isAvailableCheckbox.disabled = false;
+                }
+            }
+        });
+    </script>
+}

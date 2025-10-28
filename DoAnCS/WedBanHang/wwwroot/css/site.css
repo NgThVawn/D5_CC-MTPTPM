@@ -1,0 +1,162 @@
+html {
+  font-size: 14px;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+html {
+  position: relative;
+  min-height: 100%;
+}
+
+
+.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
+  color: var(--bs-secondary-color);
+  text-align: end;
+}
+
+.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
+  text-align: start;
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+main {
+    flex: 1; 
+    margin-top: 20px;
+}
+.container-lg {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/*layout*/
+.dropdown:hover .dropdown-menu {
+    display: block;
+    margin-top: 0;
+}
+
+.dropdown-menu {
+    max-height: 500px;
+    overflow-y: auto;
+    left: auto;
+    right: 0;
+}
+
+.navbar-brand i {
+    margin-right: 6px;
+}
+
+.dropdown-menu li:hover {
+    background-color: #f8f9fa;
+}
+
+.dropdown-menu li hr {
+    margin: 6px 0;
+    border-color: #e0e0e0;
+}
+
+/* Hi?n th? dropdown khi hover */
+.notification-dropdown:hover .notification-menu {
+    display: block;
+}
+
+/* Dropdown style nâng cao */
+.notification-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    min-width: 300px;
+    background-color: #fff;
+    z-index: 1000;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    animation: fadeIn 0.2s ease-in-out;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* N?i dung thông báo */
+.notification-item {
+    padding: 10px 15px;
+    font-size: 14px;
+    white-space: normal;
+    cursor: pointer;
+}
+
+    .notification-item:hover {
+        background-color: #f8f9fa;
+    }
+
+/* Header & footer */
+.notification-header,
+.notification-footer {
+    background-color: #f1f1f1;
+    font-weight: bold;
+}
+
+/* Hi?u ?ng fade */
+@@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.footer-link-light {
+    color: #333;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+    .footer-link-light:hover {
+        color: #0d6efd;
+    }
+
+.social-icon-light {
+    color: #333;
+    transition: color 0.3s ease;
+}
+
+    .social-icon-light:hover {
+        color: #0d6efd;
+    }
+
+.navbar-brand {
+    color: #212529; /* Màu ch? ban ??u (tùy theo giao di?n) */
+    transition: color 0.3s ease;
+    text-decoration: none;
+}
+
+    .navbar-brand:hover {
+        color: #0d6efd; /* Màu khi hover (xanh Bootstrap) */
+    }
+
+.search-bar {
+    max-width: 600px;
+    width: 100%;
+}

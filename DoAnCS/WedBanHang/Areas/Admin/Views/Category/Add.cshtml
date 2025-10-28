@@ -1,0 +1,34 @@
+﻿@model WedBanHang.Models.Category
+
+@{
+    ViewData["Title"] = "Thêm danh mục";
+}
+
+<h2 class="mb-4 text-primary"><i class="fa fa-plus-circle me-2"></i>Thêm danh mục mới</h2>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        <form asp-action="Add" class="row g-3">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="col-md-10">
+                <label asp-for="Name" class="form-label fw-semibold">Tên danh mục</label>
+                <input asp-for="Name" class="form-control" placeholder="Nhập tên danh mục..." />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+
+            <div class="col-12 mt-3 d-flex gap-2">
+                <button type="submit" class="btn btn-success px-4">
+                    <i class="fa fa-save me-1"></i> Tạo mới
+                </button>
+                <a asp-action="Index" class="btn btn-outline-secondary">
+                    <i class="fa fa-arrow-left me-1"></i> Trở về
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}

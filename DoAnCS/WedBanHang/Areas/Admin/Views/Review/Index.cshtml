@@ -1,0 +1,209 @@
+﻿@using System.Text.RegularExpressions
+@model List<WebBanHang.Models.Review>
+
+@{
+    ViewData["Title"] = "Quản lý đánh giá sản phẩm";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-primary"> <i class="bi bi-star-half me-2"></i> @ViewData["Title"]</h2>
+</div>
+
+<div class="table-responsive shadow-sm rounded bg-white p-3">
+    <table id="reviewTable" class="table table-hover align-middle" style="table-layout: fixed; width: 100%;">
+        <thead class="table-light">
+            <tr>
+                <th>Người dùng</th>
+                <th>Sản phẩm</th>
+                <th>Sao</th>
+                <th style="width: 250px">Bình luận</th>
+                <th >Ảnh</th>
+                <th>Thời gian</th>
+                <th>Xóa</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in Model)
+            {
+                <tr>
+                    <td>
+                        <div class="truncate-cell" title="@r.ApplicationUser.FullName">
+                            @r.ApplicationUser.FullName
+                        </div>
+                    </td>
+                    <td><div class="truncate-cell">@r.Product?.Name</div></td>
+                    <td>@r.Rating ⭐</td>
+                    <td>
+                        <div class="position-relative">
+                            @if (r.IsReported)
+                            {
+                                <div class="alert alert-warning p-2 mb-2 rounded d-flex align-items-start gap-3 shadow-sm">
+                                    <i class="fa-solid fa-triangle-exclamation text-danger mt-1"></i>
+                                    <div class="flex-grow-1 small text-dark">
+                                        <strong>Cảnh báo:</strong> Bình luận này đã bị người dùng báo cáo.
+
+                                        <form method="post" asp-action="Unreport" asp-route-id="@r.Id" class="mt-2">
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                                <i class="fa-solid fa-undo"></i> Bỏ cảnh báo
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            }
+
+                            <div class="text-wrap" style="white-space: normal;">
+                                @r.Comment
+                            </div>
+                        </div>
+                    </td>
+
+                    <td>
+                        @if (r.Images != null && r.Images.Any())
+                        {
+                            <div class="d-flex flex-wrap">
+                                @foreach (var img in r.Images.Take(2))
+                                {
+                                    <img src="@img.Url" class="img-thumbnail me-1" style="width: 50px; height: 50px; object-fit: cover;" />
+                                }
+                                @if (r.Images.Count > 2)
+                                {
+                                    <span class="text-muted ms-1">...</span>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <span class="text-muted fst-italic">Không có ảnh</span>
+                        }
+                    </td>
+                    <td data-order="@r.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")">
+                        @r.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                    </td>
+
+                    <td>
+                        <button class="btn btn-danger btn-sm"
+                                data-bs-toggle="modal"
+                                data-bs-target="#confirmDeleteModal"
+                                data-id="@r.Id"
+                                data-name="@r.ApplicationUser?.FullName">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal Xóa -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-action="Delete">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmDeleteModalLabel">Xác nhận xoá đánh giá</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                </div>
+                <div class="modal-body">
+                    Bạn có chắc muốn xoá đánh giá của "<strong id="reviewName"></strong>"?
+                    <input type="hidden" name="id" id="reviewId" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-danger">Xóa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+    <style>
+        .truncate-cell {
+            display: inline-block;
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            vertical-align: middle;
+            line-height: 1.5rem;
+        }
+
+        td {
+            vertical-align: middle !important;
+        }
+
+        .dataTables_wrapper .dataTables_filter input {
+            border-radius: 6px;
+            padding: 0.4rem 0.75rem;
+        }
+
+        .dataTables_wrapper .dataTables_length select {
+            border-radius: 6px;
+        }
+
+        #reviewTable td, #reviewTable th {
+            padding: 1rem 1rem;
+            vertical-align: middle;
+        }
+
+        #reviewTable tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        #reviewTable td:nth-child(4) {
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        #reviewTable td, #reviewTable th {
+            border-right: 1px solid #dee2e6;
+        }
+
+            #reviewTable td:last-child, #reviewTable th:last-child {
+                border-right: none;
+            }
+    </style>
+}
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+    <script>
+        $('#reviewTable').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/vi.json',
+                paginate: {
+                    first: '«',
+                    previous: '‹',
+                    next: '›',
+                    last: '»'
+                }
+            },
+            columnDefs: [
+                { orderable: false, targets: [4, 6] }
+            ],
+            pageLength: 10,
+            pagingType: 'full_numbers',
+            order: [[5, 'desc']]
+        });
+        const confirmModal = document.getElementById('confirmDeleteModal');
+        confirmModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const id = button.getAttribute('data-id');
+            const name = button.getAttribute('data-name');
+
+            // Gán dữ liệu vào modal
+            document.getElementById('reviewId').value = id;
+            document.getElementById('reviewName').textContent = name;
+        });
+    </script>
+}

@@ -1,0 +1,321 @@
+﻿@using WebBanHang.ViewModels
+@model WebBanHang.ViewModels.ShoppingCartViewModel
+@{
+    ViewData["Title"] = "Giỏ hàng của bạn";
+}
+
+<h2 class="mb-4 text-left"><i class="fa-solid fa-cart-shopping me-2"></i> @ViewData["Title"]</h2>
+
+@if (!Model.ActiveItems.Any() && !Model.InactiveItems.Any())
+{
+    <div class="alert alert-info text-center">
+        <i class="fa fa-cart-shopping fa-2x mb-2"></i><br />
+        Không có sản phẩm nào trong giỏ hàng.
+    </div>
+}
+else
+{
+    <!-- Sản phẩm hoạt động -->
+    @if (Model.ActiveItems.Any())
+    {
+        <form asp-action="CheckoutFromCart" asp-controller="Order" method="post" id="cartForm">
+            <div class="table-responsive shadow-sm rounded">
+                <table id="activeTable" class="table align-middle table-hover bg-white">
+                    <thead class="table-light">
+                        <tr>
+                            <th><input type="checkbox" id="selectAll" /></th>
+                            <th>Ảnh</th>
+                            <th>Tên sản phẩm</th>
+                            <th>Giá</th>
+                            <th>Số lượng</th>
+                            <th>Thành tiền</th>
+                            <th>Xóa</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < Model.ActiveItems.Count; i++)
+                        {
+                            var item = Model.ActiveItems[i];
+                            var isLast = i == Model.ActiveItems.Count - 1;
+
+                            <tr id="row-active-@item.Id" class="@(isLast ? "border-bottom-0" : "")">
+                                <td>
+                                    <input type="checkbox" name="selectedItems[]" value="@item.Id"
+                                           class="itemCheckbox"
+                                           data-price="@item.FinalPrice"
+                                           data-quantity="@item.Quantity" />
+                                </td>
+                                <td><img src="@item.ImageUrl" class="img-thumbnail"/></td>
+                                <td>@item.ProductName</td>
+                                <td>
+                                    @if (item.FinalPrice < item.Price)
+                                    {
+                                        var discountAmount = item.Price - item.FinalPrice;
+                                        var percent = Math.Round((discountAmount / item.Price) * 100);
+
+                                        <div>
+                                            <span class="fw-bold text-danger">@item.FinalPrice.ToString("N0") ₫</span>
+                                            <del class="text-muted small">@item.Price.ToString("N0") ₫</del><br />
+                                            <span class="badge bg-warning text-dark mt-1">
+                                                @if (discountAmount >= 1000)
+                                                {
+                                                    <text>Giảm @Math.Round(discountAmount / 1000)k</text>
+                                                }
+                                                else
+                                                {
+                                                    <text>Giảm @percent%</text>
+                                                }
+                                            </span>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="fw-semibold">@item.Price.ToString("N0") ₫</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="d-flex justify-content-start align-items-center gap-1">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm px-2 py-1"
+                                                id="decrease-@item.Id"
+                                                onclick="changeQuantity(@item.Id, -1)"
+                                                @(item.Quantity <= 1 ? "disabled" : "")>
+                                                -
+                                        </button>
+
+                                        <input type="text" id="count-@item.Id" value="@item.Quantity"
+                                               readonly class="form-control text-center p-1"
+                                               style="width: 45px; height: 32px;" />
+
+                                        <button type="button" class="btn btn-outline-secondary btn-sm px-2 py-1"
+                                                id="increase-@item.Id"
+                                                onclick="changeQuantity(@item.Id, 1)"
+                                                @(item.Quantity >= item.StockQuantity ? "disabled" : "")>
+                                                +
+                                        </button>
+
+                                        <input type="hidden" id="maxStock-@item.Id" value="@item.StockQuantity" />
+                                    </div>
+                                </td>
+                                <td>
+                                    <span id="subtotal-@item.Id">@((item.FinalPrice * item.Quantity).ToString("N0")) VNĐ</span>
+                                </td>
+
+                                <td>
+                                    <button type="button" class="btn btn-danger btn-sm" onclick="removeFromCart(@item.Id, false)">
+                                        <i class="fa fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="text-end mt-4 pe-2">
+                <h4 class="fw-bold text-danger">Tổng cộng: <span id="totalPrice" class="text-dark">0</span> VNĐ</h4>
+                <input type="hidden" id="selectedIds" />
+                <button type="submit" class="btn btn-lg btn-success mt-3 px-5">
+                    <i class="fa fa-credit-card me-1"></i> Mua hàng
+                </button>
+            </div>
+        </form>
+    }
+
+    <!-- Sản phẩm không hoạt động -->
+    @if (Model.InactiveItems.Any())
+    {
+        <h4 class="mt-5 mb-4" id="inactiveTitle">Sản Phẩm Không Hoạt Động</h4>
+        <div class="table-responsive shadow-sm rounded">
+            <table id="inactiveTable" class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Ảnh</th>
+                        <th>Tên sản phẩm</th>
+                        <th>Giá</th>
+                        <th>Số lượng</th>
+                        <th>Trạng thái</th>
+                        <th>Xóa</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.InactiveItems)
+                    {
+                        <tr id="row-inactive-@item.Id" class="text-muted mt-5">
+                            <td><img src="@item.ImageUrl" class="img-thumbnail"/></td>
+                            <td>@item.ProductName</td>
+                            <td>@item.Price.ToString("N0") VNĐ</td>
+                            <td>@item.Quantity</td>
+                            <td>
+                                <span class="text-danger">
+                                    @(item.StockQuantity == 0 ? "Hết hàng" : (!item.IsAvailable ? "Không khả dụng" : ""))
+                                </span>
+                            </td>
+
+                            <td>
+                                <button type="button" class="btn btn-danger btn-sm" onclick="removeFromCart(@item.Id, true)">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+<style>
+    /* Ẩn border-bottom của hàng cuối bảng sản phẩm */
+    #activeTable tbody tr:last-child td {
+        border-bottom: none !important;
+    }
+
+    #inactiveTable tbody tr:last-child td {
+        border-bottom: none !important;
+    }
+
+    .img-thumbnail {
+        width: 80px;
+        height: 80px;
+        object-fit: cover;
+        border-radius: 6px;
+        border: 1px solid #ddd;
+        background-color: #f9f9f9;
+    }
+
+    .text-muted {
+        opacity: 0.5;
+    }
+
+    .badge.bg-warning {
+        font-size: 0.8rem;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-weight: 600;
+    }
+
+</style>
+@section Scripts {
+    <script>
+        function changeQuantity(cartId, change) {
+            var countInput = document.getElementById('count-' + cartId);
+            var maxStockInput = document.getElementById('maxStock-' + cartId);
+
+            var currentCount = parseInt(countInput.value);
+            var maxStock = parseInt(maxStockInput.value);
+            var newCount = currentCount + change;
+
+            if (newCount < 1 || newCount > maxStock) {
+                return;
+            }
+
+            $.ajax({
+                url: '@Url.Action("UpdateCart", "ShoppingCart")',
+                type: 'POST',
+                data: { cartId: cartId, count: newCount },
+                success: function (response) {
+                    if (response.success) {
+                        countInput.value = response.newCount;
+                        document.getElementById('subtotal-' + cartId).innerText = response.newSubtotal + ' VNĐ';
+                        updateTotal();
+
+                        var decreaseBtn = document.getElementById('decrease-' + cartId);
+                        var increaseBtn = document.getElementById('increase-' + cartId);
+
+                        decreaseBtn.disabled = response.newCount <= 1;
+                        increaseBtn.disabled = response.newCount >= maxStock;
+                    }
+                }
+            });
+        }
+
+        function updateTotal() {
+            let total = 0;
+            document.querySelectorAll('.itemCheckbox:checked').forEach(cb => {
+                const price = parseFloat(cb.getAttribute("data-price"));
+                const qty = parseInt(cb.getAttribute("data-quantity"));
+                total += price * qty;
+            });
+
+            const totalPriceElement = document.getElementById('totalPrice');
+            if (totalPriceElement) {
+                totalPriceElement.innerText = total.toLocaleString() + " VNĐ";
+            }
+        }
+
+
+
+        function removeFromCart(cartId, isInactive) {
+            $.ajax({
+                url: '@Url.Action("RemoveFromCart", "ShoppingCart")',
+                type: 'POST',
+                data: { cartId: cartId },
+                success: function (response) {
+                    if (response.success) {
+                        const rowId = isInactive ? 'row-inactive-' + cartId : 'row-active-' + cartId;
+                        const row = document.getElementById(rowId);
+                        if (row) row.remove();
+
+                        updateTotal();
+
+                        // Kiểm tra và cập nhật bảng inactive
+                        const inactiveTable = document.getElementById('inactiveTable');
+                        if (inactiveTable) {
+                            const inactiveRows = inactiveTable.querySelectorAll('tbody tr');
+                            if (inactiveRows.length === 0) {
+                                inactiveTable.remove();
+                                const inactiveTitle = document.getElementById('inactiveTitle');
+                                if (inactiveTitle) inactiveTitle.remove();
+                            }
+                        }
+
+                        // Kiểm tra và cập nhật bảng active
+                        const activeTable = document.getElementById('activeTable');
+                        if (activeTable) {
+                            const activeRows = activeTable.querySelectorAll('tbody tr');
+                            if (activeRows.length === 0) {
+                                activeTable.remove();
+                                const cartForm = document.getElementById("cartForm");
+                                if (cartForm) cartForm.remove();
+                            }
+                        }
+
+                        // Nếu cả hai bảng đều không còn, hiển thị thông báo
+                        const remainingActiveTable = document.getElementById('activeTable');
+                        const remainingInactiveTable = document.getElementById('inactiveTable');
+                        if (!remainingActiveTable && !remainingInactiveTable) {
+                            document.querySelector('h2').insertAdjacentHTML("afterend",
+                                '<div class="alert alert-info mt-4">Không có sản phẩm nào trong giỏ hàng.</div>');
+                        }
+                    }
+                }
+            });
+        }
+
+
+
+
+        document.querySelectorAll('.itemCheckbox').forEach(cb => {
+            cb.addEventListener('change', updateTotal);
+        });
+
+        document.getElementById('selectAll').addEventListener('change', function () {
+            document.querySelectorAll('.itemCheckbox').forEach(cb => cb.checked = this.checked);
+            updateTotal();
+        });
+
+        updateTotal();
+
+        document.getElementById('cartForm').addEventListener('submit', function (e) {
+            const selected = Array.from(document.querySelectorAll('.itemCheckbox:checked'))
+                .map(cb => cb.value);
+
+            if (selected.length === 0) {
+                e.preventDefault();
+                alert("Vui lòng chọn ít nhất một sản phẩm để mua!");
+                return;
+            }
+
+            document.getElementById('selectedIds').value = selected.join(',');
+        });
+    </script>
+}

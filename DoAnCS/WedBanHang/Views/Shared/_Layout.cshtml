@@ -1,0 +1,133 @@
+﻿@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using WebBanHang.Models
+@using WebBanHang.ViewModels
+@inject UserManager<ApplicationUser> UserManager
+@inject IHttpContextAccessor HttpContextAccessor
+@inject ApplicationDbContext _context
+
+@{
+    var user = await UserManager.GetUserAsync(HttpContextAccessor.HttpContext.User);
+    List<Order> orders = new();
+    List<Notification> notifications = new();
+    int unreadCount = 0;
+
+    if (user != null)
+    {
+        orders = await _context.Orders
+            .Where(o => o.ApplicationUserId == user.Id && o.Status == OrderStatus.HoanThanh)
+            .ToListAsync();
+
+        notifications = await _context.Notifications
+            .Where(n => n.UserId == user.Id)
+            .OrderByDescending(n => n.CreatedAt)
+            .Take(5)
+            .ToListAsync();
+
+        unreadCount = await _context.Notifications
+            .Where(n => n.UserId == user.Id && !n.IsRead)
+            .CountAsync();
+    }
+    var senderName = User.Identity.IsAuthenticated ? User.Identity.Name : "Khách";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>@ViewData["Title"] - WedBanHang</title>
+        <script type="importmap"></script>
+        <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+        <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+        <link rel="stylesheet" href="~/WedBanHang.styles.css" asp-append-version="true" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+
+    </head>
+    <body>
+    @await Html.PartialAsync("_HeaderPartial")
+
+
+        <div class="container-lg" style="padding-top: 90px;">
+            <main role="main" class="pb-3">
+                @RenderBody()
+            </main>
+        </div>
+
+
+        @await Html.PartialAsync("_FooterPartial")
+
+
+        <script src="~/lib/jquery/dist/jquery.min.js"></script>
+        <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="~/js/site.js" asp-append-version="true"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+        @await RenderSectionAsync("Scripts", required: false)
+
+        <script>
+            document.addEventListener("DOMContentLoaded", function () {
+                document.querySelectorAll('.dropdown-item[data-notification-id]').forEach(item => {
+                    item.addEventListener('click', function (event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+
+                        const notificationId = item.dataset.notificationId;
+
+                        fetch(`/Notification/MarkAsRead/${notificationId}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        }).then(response => {
+                            if (response.ok) {
+                                // ✅ Đánh dấu là đã đọc
+                                item.classList.add('text-muted');
+
+                                // ✅ Giảm số badge
+                                const badge = document.querySelector('.notification-dropdown .badge.bg-danger');
+                                if (badge) {
+                                    let current = parseInt(badge.textContent);
+                                    if (!isNaN(current) && current > 0) {
+                                        current--;
+                                        if (current > 0) {
+                                            badge.textContent = current;
+                                        } else {
+                                            badge.remove();
+                                        }
+                                    }
+                                }
+                            } else {
+                                alert('Lỗi khi đánh dấu thông báo là đã đọc.');
+                            }
+                        }).catch(error => {
+                            console.error('Lỗi khi gửi yêu cầu:', error);
+                        });
+                    });
+                });
+            });
+        </script>
+
+        <script>
+            function updateCartCount() {
+                $.get('/ShoppingCart/GetCartCount', function (data) {
+                    const badge = $('#cartCount');
+                    if (data.count > 0) {
+                        badge.text(data.count);
+                        badge.show();
+                    } else {
+                        badge.hide();
+                    }
+                });
+            }
+
+            document.addEventListener("DOMContentLoaded", function () {
+                updateCartCount();
+                setTimeout(updateCartCount, 100);
+                window.addEventListener("pageshow", updateCartCount);
+            });
+        </script>
+       
+    </body>
+</html>
+

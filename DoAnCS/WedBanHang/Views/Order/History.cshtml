@@ -1,0 +1,484 @@
+﻿@model List<WebBanHang.Models.Order>
+@using WebBanHang.Models
+@{
+    ViewData["Title"] = "Lịch sử đơn hàng";
+    Layout = "~/Views/Shared/_UserLayout.cshtml";
+
+    var selectedStatus = Context.Request.Query["status"];
+    OrderStatus? filterStatus = string.IsNullOrEmpty(selectedStatus) ? null : Enum.TryParse<OrderStatus>(selectedStatus, out var s) ? s : null;
+    var filteredOrders = filterStatus.HasValue ? Model.Where(o => o.Status == filterStatus.Value).ToList() : Model;
+
+    var userReviews = ViewBag.ExistingReviews as List<WebBanHang.Models.Review>;
+
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <h3 class="fw-bold text-primary mb-0">
+        <i class="fa fa-cart-shopping me-2"></i> Lịch sử mua hàng
+    </h3>
+</div>
+
+
+<!-- Tabs trạng thái -->
+<ul class="nav nav-pills flex-wrap gap-2 mb-4 status-tabs">
+    <li class="nav-item">
+        <a class="nav-link @(string.IsNullOrEmpty(selectedStatus) ? "active" : "")"
+           asp-action="History" asp-controller="Order">
+            Tất cả
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(selectedStatus == OrderStatus.ChoXacNhan.ToString() ? "active" : "")"
+           asp-action="History" asp-controller="Order" asp-route-status="@OrderStatus.ChoXacNhan">
+            Chờ xác nhận
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(selectedStatus == OrderStatus.DangChuanBi.ToString() ? "active" : "")"
+           asp-action="History" asp-controller="Order" asp-route-status="@OrderStatus.DangChuanBi">
+            Chuẩn bị hàng
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(selectedStatus == OrderStatus.DangVanChuyen.ToString() ? "active" : "")"
+           asp-action="History" asp-controller="Order" asp-route-status="@OrderStatus.DangVanChuyen">
+            Vận chuyển
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(selectedStatus == OrderStatus.DaGiao.ToString() ? "active" : "")"
+           asp-action="History" asp-controller="Order" asp-route-status="@OrderStatus.DaGiao">
+            Đã giao hàng
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(selectedStatus == OrderStatus.HoanThanh.ToString() ? "active" : "")"
+           asp-action="History" asp-controller="Order" asp-route-status="@OrderStatus.HoanThanh">
+            Hoàn thành
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(selectedStatus == OrderStatus.DaHuy.ToString() ? "active" : "")"
+           asp-action="History" asp-controller="Order" asp-route-status="@OrderStatus.DaHuy">
+            Đã hủy
+        </a>
+    </li>
+</ul>
+
+
+@if (!filteredOrders.Any())
+{
+    <p>Không có đơn hàng nào.</p>
+}
+else
+{
+    foreach (var order in filteredOrders)
+    {
+        var totalAmount = order.OrderDetails.Sum(od => od.Quantity * od.Price);
+        <div class="order-card">
+            <h5 class="mb-3">Mã @order.Id - Ngày: @order.OrderDate.ToString("dd/MM/yyyy")</h5>
+            <p>
+                <strong>Trạng thái:</strong>
+                <span class="order-status @order.Status">@order.Status.ToFriendlyString()</span>
+            </p>
+
+            <table class="table table-hover align-middle table-order mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Sản phẩm</th>
+                        <th>Số lượng</th>
+                        <th>Giá</th>
+                        <th>Thành tiền</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in order.OrderDetails)
+                    {
+                        var key = $"{order.Id}_{item.ProductId}";
+                        bool hasReviewed = item.HasReviewed;
+                        bool isReviewExists = ((HashSet<string>)ViewBag.ReviewedProductIds).Contains(key);
+                        var review = userReviews?.FirstOrDefault(r => r.OrderId == order.Id && r.ProductId == item.ProductId);
+
+                        <tr>
+                            <td style="min-width: 280px;">
+                                <div class="d-flex flex-column">
+                                    <span class="fw-bold">@item.Product.Name</span>
+                                    <div class="mt-2">
+                                        @if ((order.Status == OrderStatus.DaGiao || order.Status == OrderStatus.HoanThanh) && !hasReviewed)
+                                        {
+                                            <a href="javascript:void(0);"
+                                               class="btn btn-sm btn-outline-primary"
+                                               onclick="openReviewModal(@item.ProductId, @order.Id, this)">
+                                                <i class="fa fa-pen-to-square me-1"></i> Đánh giá
+                                            </a>
+                                        }
+                                        else if (hasReviewed && isReviewExists)
+                                        {
+                                            <a href="@Url.Action("Display", "Product", new { id = item.ProductId })"
+                                               class="btn btn-sm btn-outline-success">
+                                                <i class="fa fa-check me-1"></i> Đã đánh giá
+                                            </a>
+                                        }
+                                        else if (hasReviewed && !isReviewExists)
+                                        {
+                                            <a href="@Url.Action("Display", "Product", new { id = item.ProductId })"
+                                               class="btn btn-sm btn-outline-danger">
+                                                <i class="fa fa-ban me-1"></i> Đánh giá đã bị xóa
+                                            </a>
+                                        }
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td>@item.Quantity</td>
+
+                            <td>
+                                <span class="fw-bold text-dark">@item.Price.ToString("N0") ₫</span><br />
+                                @if (item.Price != item.Product.Price)
+                                {
+                                    <small class="text-muted">
+                                        <del>@item.Product.Price.ToString("N0") ₫</del>
+                                    </small>
+                                }
+                            </td>
+
+
+                            <td class="fw-bold">@((item.Quantity * item.Price).ToString("N0")) ₫</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <div class="text-end mt-3">
+                <div class="d-inline-block px-4 py-2 bg-light border rounded-pill shadow-sm fw-bold text-dark">
+                    Tổng tiền: <span class="text-danger">@totalAmount.ToString("N0")</span> ₫
+                </div>
+            </div>
+
+        </div>
+    }
+}
+<!-- 🔻 Modal Đánh Giá -->
+<div class="modal fade" id="reviewModal" tabindex="-1" aria-labelledby="reviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="reviewForm" enctype="multipart/form-data">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="reviewModalLabel">Đánh Giá Sản Phẩm</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+
+                    <input type="hidden" name="ProductId" />
+                    <input type="hidden" name="OrderId" id="orderIdInput" />
+
+                    <div class="mb-3">
+                        <div id="starRating" class="mb-3">
+                            <label>Đánh giá:</label><br />
+                            @for (int i = 1; i <= 5; i++)
+                            {
+                                <i class="fa-regular fa-star rating-star" data-value="@i"></i>
+                            }
+                            <input type="hidden" name="Rating" id="ratingValue" value="0" />
+                        </div>
+
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Bình luận:</label>
+                        <textarea name="Comment" class="form-control" rows="4"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Ảnh đính kèm:</label><br />
+                        <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('imageInput').click()">
+                            📷 Thêm ảnh
+                        </button>
+                        <input type="file" id="imageInput" name="Images" accept="image/*" multiple style="display: none;" />
+
+                        <div id="imagePreview" class="d-flex flex-wrap mt-2"></div>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Hoàn thành</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Trở lại</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<div id="reviewToast" class="toast-message text-center">
+    <i class="fas fa-circle-check fa-2x mb-2 text-success"></i><br />
+    Cảm ơn bạn đã đánh giá!
+</div>
+
+
+<style>
+    .toast-message {
+        position: fixed;
+        top: 40%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: #FFFFFF;
+        color: #000;
+        padding: 16px 32px;
+        border-radius: 8px;
+        font-size: 18px;
+        z-index: 9999;
+        display: none;
+        animation: fadeInOut 3s ease-in-out;
+        border: 5px solid #00FF66;
+
+    }
+
+    @@keyframes fadeInOut {
+        0% {
+            opacity: 0;
+        }
+
+        10% {
+            opacity: 1;
+        }
+
+        90% {
+            opacity: 1;
+        }
+
+        100% {
+            opacity: 0;
+        }
+    }
+
+    .rating-star {
+        font-size: 32px;
+        color: #FFD700; /* vàng */
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+
+        .rating-star.filled {
+            color: #FFD700;
+        }
+
+        .rating-star.outlined {
+            color: transparent;
+            -webkit-text-stroke: 1px #FFD700; /* tạo viền vàng */
+        }
+
+    #imagePreview img {
+        width: 100px;
+        height: 100px;
+        object-fit: cover;
+        border-radius: 6px;
+        margin-right: 8px;
+        margin-bottom: 8px;
+        border: 1px solid #ccc;
+    }
+
+    /* Thẻ đơn hàng tổng */
+    .order-card {
+        background-color: #fff;
+        border: 1px solid #dee2e6;
+        border-left: 5px solid #0d6efd;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+        transition: box-shadow 0.2s ease;
+    }
+
+        .order-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+    .order-status {
+        font-weight: 600;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        display: inline-block;
+    }
+
+        /* Màu cho trạng thái đơn */
+        .order-status.ChoXacNhan {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .order-status.DangChuanBi {
+            background-color: #cfe2ff;
+            color: #084298;
+        }
+
+        .order-status.DangVanChuyen {
+            background-color: #e2e3e5;
+            color: #343a40;
+        }
+
+        .order-status.DaGiao,
+        .order-status.HoanThanh {
+            background-color: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .order-status.DaHuy {
+            background-color: #f8d7da;
+            color: #842029;
+        }
+
+    .table-order th,
+    .table-order td {
+        vertical-align: middle !important;
+    }
+
+    .table-order small {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+
+    .table-order th {
+        font-size: 0.95rem;
+        font-weight: 600;
+        background-color: #f8f9fa;
+    }
+
+    .table-order td {
+        font-size: 0.95rem;
+        vertical-align: top;
+    }
+
+    .table-order .btn {
+        font-size: 0.8rem;
+        padding: 4px 10px;
+        border-radius: 20px;
+        transition: 0.2s;
+    }
+
+        .table-order .btn i {
+            font-size: 0.75rem;
+        }
+
+    .order-total-box {
+        font-size: 1rem;
+        border: 1px solid #dee2e6;
+        border-radius: 30px;
+        padding: 8px 20px;
+        background-color: #f8f9fa;
+        display: inline-block;
+        font-weight: 600;
+        color: #212529;
+    }
+
+    .status-tabs .nav-link {
+        border-radius: 30px;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        color: #0f0f0f;
+        background-color: #f1f3f5;
+        transition: 0.2s;
+    }
+
+        .status-tabs .nav-link:hover {
+            background-color: #e2e6ea;
+            color: #084298;
+        }
+
+        .status-tabs .nav-link.active {
+            background-color: #0d6efd;
+            color: #fff !important;
+            font-weight: 600;
+        }
+
+</style>
+
+
+
+@section Scripts {
+    <script>
+        let currentReviewButton = null;
+
+        function openReviewModal(productId, orderId, button) {
+            currentReviewButton = button;
+            document.querySelector('#reviewForm input[name=ProductId]').value = productId;
+            document.querySelector('#reviewForm input[name=OrderId]').value = orderId;
+            const modal = new bootstrap.Modal(document.getElementById('reviewModal'));
+            modal.show();
+        }
+
+
+        document.getElementById('reviewForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+
+            const response = await fetch('/Review/Create', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('reviewModal')).hide();
+                form.reset();
+
+                // ✅ Cập nhật nút thành "Đã đánh giá"
+                if (currentReviewButton) {
+                    currentReviewButton.textContent = "✓ Đã đánh giá";
+                    currentReviewButton.classList.remove("btn-primary");
+                    currentReviewButton.classList.add("btn-outline-success");
+                    currentReviewButton.onclick = function () {
+                        window.location.href = "/Product/Display/" + form.ProductId.value;
+                    };
+                }
+
+
+                // ✅ Hiển thị toast cảm ơn
+                const toast = document.getElementById('reviewToast');
+                toast.style.display = 'block';
+                setTimeout(() => {
+                    toast.style.display = 'none';
+                }, 3000);
+            } else {
+                alert("Gửi đánh giá thất bại. Vui lòng thử lại.");
+            }
+        });
+        document.querySelectorAll('.rating-star').forEach(star => {
+            star.addEventListener('click', function () {
+                const rating = parseInt(this.dataset.value);
+                document.getElementById('ratingValue').value = rating;
+
+                // Update sao hiển thị
+                document.querySelectorAll('.rating-star').forEach(s => {
+                    const val = parseInt(s.dataset.value);
+                    if (val <= rating) {
+                        s.classList.add('filled');
+                        s.classList.remove('outlined');
+                        s.classList.replace('fa-regular', 'fa-solid');
+                    } else {
+                        s.classList.remove('filled');
+                        s.classList.add('outlined');
+                        s.classList.replace('fa-solid', 'fa-regular');
+                    }
+                });
+            });
+        });
+        document.getElementById('imageInput').addEventListener('change', function () {
+            const previewContainer = document.getElementById('imagePreview');
+            previewContainer.innerHTML = ""; // Clear cũ
+            const files = this.files;
+
+            if (files) {
+                Array.from(files).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        const img = document.createElement("img");
+                        img.src = e.target.result;
+                        previewContainer.appendChild(img);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+        });
+
+    </script>
+}
+

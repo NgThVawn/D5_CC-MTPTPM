@@ -1,0 +1,14 @@
+﻿@model WebBanHang.Models.Promotion
+
+@{
+    ViewData["Title"] = "Xóa chương trình khuyến mãi";
+}
+
+<h2>Xác nhận xóa</h2>
+<p>Bạn có chắc chắn muốn xóa chương trình khuyến mãi "<strong>@Model.Name</strong>" không?</p>
+
+<form asp-action="DeleteConfirmed" method="post">
+    <input type="hidden" asp-for="Id" />
+    <button type="submit" class="btn btn-danger">Xóa</button>
+    <a asp-action="Index" class="btn btn-secondary">Hủy</a>
+</form>

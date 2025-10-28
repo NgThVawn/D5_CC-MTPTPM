@@ -1,0 +1,182 @@
+﻿@using System.Text.RegularExpressions
+@model IEnumerable<WedBanHang.Models.Product>
+@{
+    ViewData["Title"] = "Quản lý sản phẩm";
+}
+
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-primary"> <i class="bi bi-box-seam me-2"></i> Danh sách sản phẩm</h2>
+    <a asp-area="Admin" asp-action="Add" class="btn btn-primary">
+        <i class="bi bi-plus-circle me-2"></i> Thêm sản phẩm
+    </a>
+</div>
+
+<div class="table-responsive shadow-sm rounded bg-white p-3">
+    <table id="productTable" class="table table-hover align-middle" style="table-layout: fixed; width: 100%;">
+        <thead class="table-light">
+            <tr>
+                <th style="width: 40px">ID</th>
+                <th style="width: 120px">Tên</th>
+                <th style="width: 70px">Giá</th>
+                <th style="width: 180px">Mô tả</th>
+                <th style="width: 70px">Danh mục</th>
+                <th>Ảnh</th>
+                <th>Tồn kho</th>
+                <th style="width: 120px">Trạng thái</th>
+                <th style="width: 80px">Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var product in Model)
+            {
+                <tr>
+                    <td><div class="truncate-cell">@product.Id</div></td>
+                    <td><div class="truncate-cell">@product.Name</div></td>
+                    <td><div class="truncate-cell">@product.Price.ToString("N0") ₫</div></td>
+                    <td>
+                        <div class="truncate-cell">
+                            @Html.Raw(Regex.Replace(product.Description, "<.*?>", string.Empty))
+                        </div>
+                    </td>
+                    <td><div class="truncate-cell">@product.Category?.Name</div></td>
+
+                    <td>
+                        @if (product.Images != null && product.Images.Any())
+                        {
+                            <div class="d-flex align-items-center">
+                                <img src="@product.Images.First().Url" alt="Ảnh chính" class="img-thumbnail me-1" style="width: 50px;" />
+                                @if (product.Images.Count() > 1)
+                                {
+                                    <span class="text-muted">...</span>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <span class="text-muted fst-italic">Không có ảnh</span>
+                        }
+                    </td>
+
+                    <td>@product.StockQuantity</td>
+                    <td>
+                        @if (product.IsAvailable)
+                        {
+                            <span class="badge bg-success">Đang hoạt động</span>
+                        }
+                        else
+                        {
+                            if (product.StockQuantity == 0)
+                            {
+                                <span class="badge bg-danger">Hết hàng</span>
+                            }
+                            else if (!product.IsAvailable)
+                            {
+                                <span class="badge bg-dark">Không khả dụng</span>
+                            }
+                        }
+                    </td>
+                    <td>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <a asp-area="Admin" asp-action="Display" asp-route-id="@product.Id" class="btn btn-outline-primary" title="Xem chi tiết">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a asp-area="Admin" asp-action="Update" asp-route-id="@product.Id" class="btn btn-outline-warning" title="Chỉnh sửa">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+                            <a asp-area="Admin" asp-action="Delete" asp-route-id="@product.Id" class="btn btn-outline-danger" title="Xoá">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+
+    <style>
+        /* Giãn cách giữa các cột */
+        #productTable td, #productTable th {
+            padding: 1rem 1rem;
+            vertical-align: middle;
+        }
+
+        /* Chữ giới hạn độ rộng & hiện ... nếu quá dài */
+        .truncate-cell {
+            display: inline-block;
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            vertical-align: middle;
+            line-height: 1.5rem;
+        }
+
+        td {
+            vertical-align: middle !important;
+        }
+        /* Responsive hình ảnh sản phẩm */
+        .product-images img {
+            width: 50px;
+            height: auto;
+            border-radius: 5px;
+            margin-right: 5px;
+        }
+
+        /* Nút DataTables đẹp hơn */
+        .dataTables_wrapper .dataTables_filter input {
+            border-radius: 6px;
+            padding: 0.4rem 0.75rem;
+        }
+
+        .dataTables_wrapper .dataTables_length select {
+            border-radius: 6px;
+        }
+
+        #productTable td,
+        #productTable th {
+            border-right: 1px solid #dee2e6; /* Viền phải giữa các cột */
+        }
+
+            #productTable td:last-child,
+            #productTable th:last-child {
+                border-right: none; /* Không áp dụng cho cột cuối */
+            }
+
+    </style>
+}
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+    <script>
+        $('#productTable').DataTable({
+          language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/vi.json',
+            paginate: {
+              first: '«',
+              previous: '‹',
+              next: '›',
+              last: '»'
+            }
+          },
+          columnDefs: [
+            { orderable: false, targets: [4, 7] }
+          ],
+          order: [[0, 'desc']],
+          pageLength: 10,
+          pagingType: 'full_numbers',
+          order: [[0, 'desc']]
+
+        });
+
+    </script>
+}

@@ -1,0 +1,124 @@
+﻿@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using WebBanHang.Models
+@using WebBanHang.ViewModels
+@inject UserManager<ApplicationUser> UserManager
+@inject IHttpContextAccessor HttpContextAccessor
+@inject ApplicationDbContext _context
+@inject SignInManager<WebBanHang.Models.ApplicationUser> SignInManager
+
+@{
+    var user = await UserManager.GetUserAsync(HttpContextAccessor.HttpContext.User);
+    List<Order> orders = new();
+    List<Notification> notifications = new();
+    int unreadCount = 0;
+
+    if (user != null)
+    {
+        orders = await _context.Orders
+            .Where(o => o.ApplicationUserId == user.Id && o.Status == OrderStatus.HoanThanh)
+            .ToListAsync();
+
+        notifications = await _context.Notifications
+            .Where(n => n.UserId == user.Id)
+            .OrderByDescending(n => n.CreatedAt)
+            .Take(5)
+            .ToListAsync();
+
+        unreadCount = await _context.Notifications
+            .Where(n => n.UserId == user.Id && !n.IsRead)
+            .CountAsync();
+    }
+}
+
+<header>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom shadow-sm py-3 fixed-top">
+        <div class="container">
+            <!-- Logo -->
+            <a class="navbar-brand fw-bold" href="/Product/Index">
+                <img src="/images/logo.png" alt="WedBanHang Logo" style="height: 32px;" class="me-2" />
+                Technology Shop
+            </a>
+            <!-- Toggle (Mobile) -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <!-- Giỏ hàng -->
+            <a href="/ShoppingCart/Index" class="position-relative me-3">
+                <img src="/images/shoppingcart.png" alt="Cart" style="width: 30px;" />
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                      id="cartCount"
+                      style="display: none;">
+                </span>
+            </a>
+
+            <!-- Navigation links + Notifications + Login -->
+            <div class="collapse navbar-collapse" id="mainNavbar">
+                <!-- Tìm kiếm -->
+                <form class="d-flex mx-auto search-bar" method="get" action="/Product/Index">
+                    <input class="form-control me-2" style="width: 900px" type="search" name="search" placeholder="Tìm kiếm sản phẩm..." aria-label="Search" />
+                    <button class="btn btn-primary" type="submit">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </form>
+
+                <ul class="navbar-nav mb-2 mb-lg-0 me-2">
+                   
+                </ul>
+              
+
+                <!-- Notifications -->
+                <div class="dropdown notification-dropdown position-relative me-3">
+                    <!-- Phần chuông là <a> để chuyển trang -->
+                    <a href="/Notification/Index" class="position-relative d-inline-block">
+                        <img src="/images/notification.png" alt="Thông báo" style="width: 32px;" />
+                        @if (unreadCount > 0)
+                        {
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                @unreadCount
+                            </span>
+                        }
+                    </a>
+
+                    <!-- Dropdown vẫn hoạt động khi hover -->
+                    <div class="dropdown-menu notification-menu p-0 shadow-sm">
+                        <div class="notification-header px-3 py-2 border-bottom">
+                            <strong>Thông báo</strong>
+                        </div>
+                        <div class="notification-list" style="max-height: 400px; overflow-y: auto;">
+                            @if (!notifications.Any())
+                            {
+                                <div class="px-3 py-2 text-muted small">Không có thông báo mới</div>
+                            }
+                            else
+                            {
+                                @foreach (var n in notifications)
+                                {
+                                    <div class="dropdown-item notification-item @(n.IsRead ? "text-muted" : "")" data-notification-id="@n.Id">
+                                        <i class="fas fa-circle me-2 text-warning" style="font-size: 8px;"></i>
+                                        @n.Message
+                                        <hr class="my-1" />
+                                    </div>
+                                }
+                            }
+                        </div>
+                        <div class="notification-footer text-center border-top py-2">
+                            <a href="/Notification/Index" class="small text-decoration-none">Xem tất cả</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Login/Register/Profile -->
+                <partial name="_LoginPartial" />
+            </div>
+        </div>
+        @if (SignInManager.IsSignedIn(User) && User.IsInRole("Admin"))
+        {
+            <a class="btn btn-outline-primary rounded-pill d-flex align-items-center position-absolute top-50 end-0 translate-middle-y me-2"
+               href="/Admin/Product" style="z-index: 1050;">
+                <i class="bi bi-speedometer2 me-1"></i> Quản lý
+            </a>
+        }
+    </nav>
+</header>
+

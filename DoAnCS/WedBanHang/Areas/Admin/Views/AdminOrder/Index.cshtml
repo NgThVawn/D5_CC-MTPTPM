@@ -1,0 +1,180 @@
+﻿@using WebBanHang.Models
+@model IEnumerable<Order>
+
+@{
+    ViewData["Title"] = "Quản lý đơn hàng";
+    Func<OrderStatus, string> getStatusClass = status => status switch
+    {
+        OrderStatus.ChoXacNhan => "warning text-dark",
+        OrderStatus.DangChuanBi => "info",
+        OrderStatus.DangVanChuyen => "primary",
+        OrderStatus.DaGiao => "secondary",
+        OrderStatus.HoanThanh => "success",
+        OrderStatus.DaHuy => "danger",
+        _ => "light"
+    };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-primary">
+        <i class="bi bi-receipt-cutoff me-2"></i>Quản lý đơn hàng
+    </h2>
+</div>
+
+<div class="table-responsive shadow-sm rounded bg-white p-3">
+    <table id="orderTable" class="table table-hover align-middle" style="table-layout: fixed; width: 100%;">
+        <thead class="table-light">
+            <tr>
+                <th style ="width: 70px;">Mã đơn</th>
+                <th>Người đặt</th>
+                <th>Ngày đặt</th>
+                <th>Thanh toán</th>
+                <th>Mã đơn</th>
+                <th style="width: 130px;">Trạng thái</th>
+                <th style="width: 300px;">Thao tác</th>
+               
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var order in Model)
+            {
+                <tr>
+                    <td>@order.Id</td>
+                    <td><div class="truncate-cell">@order.ApplicationUser?.FullName</div></td>
+                    <td>@order.OrderDate.ToString("dd/MM/yyyy HH:mm")</td>
+
+                    <td>
+                        @if (order.PaymentMethod == PaymentMethod.BankTransfer)
+                        {
+                            <span class="badge bg-@(order.IsPaid ? "success" : "danger text-white")">
+                                @(order.IsPaid ? "Đã thanh toán" : "Chưa thanh toán")
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">COD</span>
+                        }
+                    </td>
+                    <td>
+                        <span class="text-primary fw-semibold">@order.OrderCode</span>
+                    </td>
+
+                    <td>
+                        <span class="badge bg-@getStatusClass(order.Status)">
+                            @order.Status.ToFriendlyString()
+                        </span>
+                    </td>
+                    <td>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a asp-area="Admin" asp-controller="AdminOrder" asp-action="Details" asp-route-id="@order.Id" class="btn btn-sm btn-outline-info">
+                                <i class="bi bi-eye"></i> Chi tiết
+                            </a>
+
+                            @if (order.Status != OrderStatus.HoanThanh && order.Status != OrderStatus.DaHuy)
+                            {
+                                <button class="btn btn-sm btn-outline-success btn-update-status" data-id="@order.Id">
+                                    <i class="bi bi-arrow-repeat"></i> @order.Status.GetActionLabel()
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger btn-cancel-order" data-id="@order.Id">
+                                    <i class="bi bi-x-circle"></i> Hủy
+                                </button>
+                            }
+                        </div>
+                    </td>
+                    
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+
+    <style>
+        .truncate-cell {
+            display: inline-block;
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        #orderTable td, #orderTable th {
+            padding: 1rem;
+            vertical-align: middle;
+        }
+
+        .dataTables_wrapper .dataTables_filter input {
+            border-radius: 6px;
+            padding: 0.4rem 0.75rem;
+        }
+
+        .dataTables_wrapper .dataTables_length select {
+            border-radius: 6px;
+        }
+
+        #orderTable td, #orderTable th {
+            border-right: 1px solid #dee2e6; /* Viền phải giữa các cột */
+        }
+
+            #orderTable td:last-child, #orderTable th:last-child {
+                border-right: none; /* Không áp dụng cho cột cuối */
+            }
+
+
+    </style>
+}
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            $('#orderTable').DataTable({
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/vi.json',
+                    paginate: {
+                        first: '«',
+                        previous: '‹',
+                        next: '›',
+                        last: '»'
+                    }
+                },
+                columnDefs: [
+                    { orderable: false, targets: [4] }
+                ],
+                pageLength: 10,
+                pagingType: 'full_numbers',
+                order: [[0, 'desc']]
+            });
+
+            document.querySelectorAll('.btn-update-status').forEach(btn => {
+                btn.addEventListener('click', async function () {
+                    const id = this.dataset.id;
+                    const response = await fetch(`/Admin/AdminOrder/Confirm/${id}`, {
+                        method: 'POST'
+                    });
+                    if (response.ok) location.reload();
+                    else alert("Cập nhật trạng thái thất bại.");
+                });
+            });
+
+            document.querySelectorAll('.btn-cancel-order').forEach(btn => {
+                btn.addEventListener('click', async function () {
+                    const id = this.dataset.id;
+                    const confirmed = confirm("Bạn chắc chắn muốn hủy đơn?");
+                    if (!confirmed) return;
+                    const response = await fetch(`/Admin/AdminOrder/Cancel/${id}`, {
+                        method: 'POST'
+                    });
+                    if (response.ok) location.reload();
+                    else alert("Không thể hủy đơn hàng.");
+                });
+            });
+        });
+    </script>
+}

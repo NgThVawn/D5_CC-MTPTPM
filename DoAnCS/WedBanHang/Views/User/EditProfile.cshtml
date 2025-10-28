@@ -1,0 +1,275 @@
+﻿@using WebBanHang.ViewModels
+@model EditProfileViewModel
+@{
+    ViewData["Title"] = "Chỉnh sửa thông tin cá nhân";
+    Layout = "~/Views/Shared/_UserLayout.cshtml";
+}
+
+<div class="profile-edit-header d-flex align-items-center gap-3 mb-4">
+    <div class="icon-box">
+        <i class="fa fa-user-pen"></i>
+    </div>
+    <h3 class="fw-bold text-primary mb-0">Chỉnh sửa thông tin cá nhân</h3>
+</div>
+
+<form id="editProfileForm" asp-action="EditProfile" method="post" class="profile-form">
+    <div class="row g-4">
+
+        <div class="col-md-4">
+            <label asp-for="FullName" class="form-label">Họ và tên</label>
+            <input asp-for="FullName" class="form-control shadow-sm" placeholder="Nguyễn Văn A" />
+            <span asp-validation-for="FullName" class="text-danger small"></span>
+        </div>
+
+        <div class="col-md-4">
+            <label asp-for="PhoneNumber" class="form-label">Số điện thoại</label>
+            <input asp-for="PhoneNumber" class="form-control shadow-sm" placeholder="0909xxxxxx" />
+            <span asp-validation-for="PhoneNumber" class="text-danger small"></span>
+        </div>
+
+        <div class="col-md-4">
+            <label asp-for="Email" class="form-label">Email</label>
+            <input asp-for="Email" class="form-control shadow-sm" placeholder="you@example.com" />
+            <span asp-validation-for="Email" class="text-danger small"></span>
+        </div>
+
+        <div class="col-12">
+            <hr />
+            <h6 class="text-uppercase fw-bold text-secondary mb-3">Địa chỉ</h6>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Tỉnh/Thành phố</label>
+            <select id="province" class="form-select shadow-sm"></select>
+            <span id="province-error" class="text-danger small d-none">Vui lòng chọn Tỉnh/Thành phố.</span>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Quận/Huyện</label>
+            <select id="district" class="form-select shadow-sm" disabled></select>
+            <span id="district-error" class="text-danger small d-none">Vui lòng chọn Quận/Huyện.</span>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Phường/Xã</label>
+            <select id="ward" class="form-select shadow-sm" disabled></select>
+            <span id="ward-error" class="text-danger small d-none">Vui lòng chọn Phường/Xã.</span>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Địa chỉ cụ thể</label>
+            <input type="text" id="specific-address" class="form-control shadow-sm" placeholder="123 Lê Lợi..." />
+            <span id="specific-error" class="text-danger small d-none">Vui lòng nhập địa chỉ cụ thể.</span>
+        </div>
+
+        <input type="hidden" asp-for="Address" id="full-address" />
+        <span asp-validation-for="Address" class="text-danger small"></span>
+
+        <div class="col-12 text-end mt-3">
+            <button type="submit" class="btn btn-lg btn-primary rounded-pill px-4 shadow-sm">
+                <i class="fa fa-save me-2"></i> Lưu thay đổi
+            </button>
+        </div>
+
+    </div>
+</form>
+
+<style>
+    .icon-box {
+        background-color: #e7f1ff;
+        color: #0d6efd;
+        font-size: 1.5rem;
+        padding: 0.75rem;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .profile-form .form-label {
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .profile-form .form-control,
+    .profile-form .form-select {
+        border-radius: 8px;
+        font-size: 0.95rem;
+    }
+
+    .profile-form button[type="submit"] {
+        font-weight: 600;
+    }
+
+
+</style>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const provinceSelect = document.getElementById("province");
+            const districtSelect = document.getElementById("district");
+            const wardSelect = document.getElementById("ward");
+            const specificInput = document.getElementById("specific-address");
+            const fullAddressInput = document.getElementById("full-address");
+            const form = document.getElementById("editProfileForm");
+
+            const savedAddress = `@Html.Raw(Model.Address)`;
+            const parts = savedAddress.split(",").map(x => x.trim());
+            const province = parts.at(-1) || "";
+            const district = parts.at(-2) || "";
+            const ward = parts.at(-3) || "";
+            const specific = parts.slice(0, -3).join(", ");
+            specificInput.value = specific;
+
+            function updateFullAddress() {
+                const p = provinceSelect.options[provinceSelect.selectedIndex]?.text || "";
+                const d = districtSelect.options[districtSelect.selectedIndex]?.text || "";
+                const w = wardSelect.options[wardSelect.selectedIndex]?.text || "";
+                const s = specificInput.value.trim();
+
+                if (!p || !d || !w || !s) return;
+                const full = `${s}, ${w}, ${d}, ${p}`;
+                fullAddressInput.value = full;
+            }
+
+            // Load danh sách tỉnh
+            fetch("https://provinces.open-api.vn/api/?depth=1")
+                .then(res => res.json())
+                .then(provinces => {
+                    provinces.forEach(p => {
+                        const opt = new Option(p.name, p.code);
+                        if (province.includes(p.name) || p.name.includes(province)) opt.selected = true;
+                        provinceSelect.add(opt);
+                    });
+
+                    const selectedProvince = provinces.find(p => province.includes(p.name) || p.name.includes(province));
+                    if (selectedProvince) {
+                        fetch(`https://provinces.open-api.vn/api/p/${selectedProvince.code}?depth=2`)
+                            .then(res => res.json())
+                            .then(data => {
+                                districtSelect.innerHTML = "<option value=''>-- Chọn Quận/Huyện --</option>";
+                                districtSelect.disabled = false;
+
+                                data.districts.forEach(d => {
+                                    const opt = new Option(d.name, d.code);
+                                    if (district.includes(d.name) || d.name.includes(district)) opt.selected = true;
+                                    districtSelect.add(opt);
+                                });
+
+                                const selectedDistrict = data.districts.find(d => district.includes(d.name) || d.name.includes(district));
+                                if (selectedDistrict) {
+                                    fetch(`https://provinces.open-api.vn/api/d/${selectedDistrict.code}?depth=2`)
+                                        .then(res => res.json())
+                                        .then(data => {
+                                            wardSelect.innerHTML = "<option value=''>-- Chọn Phường/Xã --</option>";
+                                            wardSelect.disabled = false;
+                                            data.wards.forEach(w => {
+                                                const opt = new Option(w.name, w.name);
+                                                if (ward.includes(w.name) || w.name.includes(ward)) opt.selected = true;
+                                                wardSelect.add(opt);
+                                            });
+
+                                            updateFullAddress();
+                                        });
+                                }
+                            });
+                    }
+                });
+
+            // Khi đổi tỉnh → load quận
+            provinceSelect.addEventListener("change", function () {
+                districtSelect.innerHTML = "<option value=''>-- Chọn Quận/Huyện --</option>";
+                wardSelect.innerHTML = "<option value=''>-- Chọn Phường/Xã --</option>";
+                districtSelect.disabled = true;
+                wardSelect.disabled = true;
+                districtSelect.value = "";
+                wardSelect.value = "";
+                updateFullAddress();
+
+                const selectedProvinceCode = this.value;
+
+                fetch(`https://provinces.open-api.vn/api/p/${selectedProvinceCode}?depth=2`)
+                    .then(res => res.json())
+                    .then(data => {
+                        districtSelect.disabled = false;
+                        data.districts.forEach(d => {
+                            const opt = new Option(d.name, d.code);
+                            districtSelect.add(opt);
+                        });
+                    });
+            });
+
+            // Khi đổi quận → load phường
+            districtSelect.addEventListener("change", function () {
+                wardSelect.innerHTML = "<option value=''>-- Chọn Phường/Xã --</option>";
+                wardSelect.disabled = true;
+                wardSelect.value = "";
+                updateFullAddress();
+
+                const selectedDistrictCode = this.value;
+
+                fetch(`https://provinces.open-api.vn/api/d/${selectedDistrictCode}?depth=2`)
+                    .then(res => res.json())
+                    .then(data => {
+                        wardSelect.disabled = false;
+                        data.wards.forEach(w => {
+                            const opt = new Option(w.name, w.name);
+                            wardSelect.add(opt);
+                        });
+                    });
+            });
+
+            // Theo dõi thay đổi để gán lại địa chỉ
+            [provinceSelect, districtSelect, wardSelect].forEach(select => {
+                select.addEventListener("change", updateFullAddress);
+            });
+            specificInput.addEventListener("input", updateFullAddress);
+
+            // ✅ Kiểm tra toàn bộ trước khi submit
+            form.addEventListener("submit", function (e) {
+                e.preventDefault();
+
+                const specific = specificInput.value.trim();
+                const provinceIndex = provinceSelect.selectedIndex;
+                const districtIndex = districtSelect.selectedIndex;
+                const wardIndex = wardSelect.selectedIndex;
+
+                let valid = true;
+
+                // Xóa lỗi cũ
+                document.querySelectorAll(".text-danger").forEach(el => el.classList.add("d-none"));
+
+                if (provinceIndex <= 0) {
+                    document.getElementById("province-error").classList.remove("d-none");
+                    valid = false;
+                }
+                if (districtIndex <= 0) {
+                    document.getElementById("district-error").classList.remove("d-none");
+                    valid = false;
+                }
+                if (wardIndex <= 0) {
+                    document.getElementById("ward-error").classList.remove("d-none");
+                    valid = false;
+                }
+                if (!specific) {
+                    document.getElementById("specific-error").classList.remove("d-none");
+                    valid = false;
+                }
+
+                if (!valid) return;
+
+                const fullAddress = `${specific}, ${wardSelect.options[wardIndex].text}, ${districtSelect.options[districtIndex].text}, ${provinceSelect.options[provinceIndex].text}`;
+                fullAddressInput.value = fullAddress;
+
+                setTimeout(() => form.submit(), 10);
+            });
+
+        });
+    </script>
+}
+
+

@@ -1,0 +1,37 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Hồ sơ cá nhân";
+    ViewData["ActivePage"] = ManageNavPages.Index;
+}
+
+<h3 class="mb-3 fw-bold">
+    <i class="fas fa-user-circle me-2"></i> @ViewData["Title"]
+</h3>
+
+<partial name="_StatusMessage" for="StatusMessage" />
+
+<div style="max-width: 600px;">
+    <form id="profile-form" method="post" class="card shadow-sm p-4">
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
+
+        <div class="form-floating mb-3">
+            <input asp-for="Username" class="form-control" disabled />
+            <label asp-for="Username">Tên đăng nhập</label>
+        </div>
+
+        <div class="form-floating mb-3">
+            <input asp-for="Input.PhoneNumber" class="form-control" placeholder="Số điện thoại" />
+            <label asp-for="Input.PhoneNumber">Số điện thoại</label>
+            <span asp-validation-for="Input.PhoneNumber" class="text-danger"></span>
+        </div>
+
+        <button id="update-profile-button" type="submit" class="btn btn-primary w-100">
+            <i class="fas fa-save me-1"></i> Cập nhật thông tin
+        </button>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

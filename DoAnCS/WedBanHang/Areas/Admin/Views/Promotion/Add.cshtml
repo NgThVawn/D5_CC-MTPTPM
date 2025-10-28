@@ -1,0 +1,167 @@
+﻿@model WebBanHang.Models.Promotion
+@{
+    ViewData["Title"] = "Thêm chương trình khuyến mãi";
+    var products = ViewBag.Products as IEnumerable<Product>;
+    var categories = ViewBag.Categories as IEnumerable<Category>;
+}
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+<div class="container py-5">
+    <h2 class="fw-bold text-primary mb-4">
+        <i class="fa-solid fa-bolt me-2"></i> Thêm chương trình khuyến mãi
+    </h2>
+
+    <form asp-action="Add" method="post">
+        @Html.AntiForgeryToken()
+
+        <div class="row g-4">
+            <!-- Left Column -->
+            <div class="col-md-6">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Tên chương trình</label>
+                            <input asp-for="Name" class="form-control" />
+                            <span asp-validation-for="Name" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Mô tả</label>
+                            <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+                            <span asp-validation-for="Description" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Loại giảm giá</label>
+                            <select asp-for="DiscountType" class="form-select">
+                                <option value="0">Giảm theo %</option>
+                                <option value="1">Giảm theo số tiền</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Giá trị giảm</label>
+                            <input asp-for="DiscountValue" class="form-control" type="number" step="0.01" />
+                            <span asp-validation-for="DiscountValue" class="text-danger small"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="col-md-6">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Ngày bắt đầu</label>
+                            <input asp-for="StartDate" class="form-control" type="datetime-local"
+                                   value="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" />
+                            <span asp-validation-for="StartDate" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Thời gian kéo dài</label>
+                            <div class="row g-2">
+                                <div class="col-3">
+                                    <label>Tháng</label>
+                                    <input type="number" name="DurationMonths" min="0" value="0" class="form-control" placeholder="Tháng" />
+                                </div>
+                                <div class="col-3">
+									<label>Ngày</label>
+                                    <input type="number" name="DurationDays" min="0" value="0" class="form-control" placeholder="Ngày" />
+                                </div>
+                                <div class="col-3">
+									<label>Giờ</label>
+                                    <input type="number" name="DurationHours" min="0" value="0" class="form-control" placeholder="Giờ" />
+                                </div>
+                                <div class="col-3">
+									<label>Phút</label>
+                                    <input type="number" name="DurationMinutes" min="0" value="0" class="form-control" placeholder="Phút" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Áp dụng cho</label>
+                            <select asp-for="TargetType" class="form-select" id="targetSelect">
+                                <option value="0">Tất cả sản phẩm</option>
+                                <option value="1">Danh mục cụ thể</option>
+                                <option value="2">Sản phẩm cụ thể</option>
+                            </select>
+                        </div>
+
+                        <div id="categorySelector" class="mt-3 d-none">
+                            <label class="form-label fw-semibold">Chọn danh mục</label>
+                            @foreach (var cat in categories)
+                            {
+                                <div class="form-check">
+                                    <input type="checkbox" name="selectedCategoryIds" value="@cat.Id" class="form-check-input" id="cat-@cat.Id" />
+                                    <label class="form-check-label" for="cat-@cat.Id">@cat.Name</label>
+                                </div>
+                            }
+                        </div>
+
+                        <div id="productSelector" class="mt-3 d-none">
+                            <label class="form-label fw-semibold">Chọn sản phẩm</label>
+                            @foreach (var prod in products)
+                            {
+                                <div class="form-check">
+                                    <input type="checkbox" name="selectedProductIds" value="@prod.Id" class="form-check-input" id="prod-@prod.Id" />
+                                    <label class="form-check-label" for="prod-@prod.Id">@prod.Name</label>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Button -->
+        <div class="mt-4">
+            <button type="submit" class="btn btn-success">
+                <i class="fa-solid fa-circle-plus me-1"></i> Tạo khuyến mãi
+            </button>
+            <a asp-action="Index" class="btn btn-outline-secondary ms-2">
+                <i class="fa-solid fa-arrow-left me-1"></i> Hủy
+            </a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <script>
+        const targetSelect = document.getElementById("targetSelect");
+        const catSelector = document.getElementById("categorySelector");
+        const prodSelector = document.getElementById("productSelector");
+
+        function toggleSelectors() {
+            const val = parseInt(targetSelect.value);
+            catSelector.classList.toggle("d-none", val !== 1);
+            prodSelector.classList.toggle("d-none", val !== 2);
+        }
+
+        targetSelect.addEventListener("change", toggleSelectors);
+        toggleSelectors();
+    </script>
+    <script>
+       
+        ['DurationMonths', 'DurationDays', 'DurationHours', 'DurationMinutes'].forEach(name => {
+            const input = document.querySelector(`input[name='${name}']`);
+            if (input) {
+                input.addEventListener("blur", function () {
+                    if (this.value.trim() === "") {
+                        this.value = 0;
+                    }
+                });
+            }
+        });
+
+    </script>
+
+}

@@ -1,0 +1,168 @@
+﻿@model WebBanHang.Models.Order
+@using System.Globalization
+@using WebBanHang.Models
+
+@{
+    ViewData["Title"] = $"Chi tiết đơn hàng #{Model.Id}";
+}
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+<style>
+    .card-summary {
+        border: 1px solid #e5e7eb;
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        background-color: #ffffff;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .order-detail-label {
+        font-weight: 600;
+        color: #4b5563;
+        margin-bottom: 0.25rem;
+    }
+
+    .order-detail-value {
+        font-size: 1rem;
+        color: #111827;
+    }
+
+    .badge-status {
+        font-size: 0.95rem;
+        padding: 0.4rem 0.8rem;
+        border-radius: 0.5rem;
+    }
+
+    .summary-total {
+        font-size: 1.25rem;
+        font-weight: bold;
+        text-align: right;
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-top: 1rem;
+    }
+
+    .section-title {
+        font-weight: bold;
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+        color: #0d6efd;
+    }
+</style>
+
+<div class="container py-5">
+    <h2 class="mb-4"><i class="fa-solid fa-clipboard-list me-2"></i>@ViewData["Title"]</h2>
+
+    <!-- Summary Card -->
+    <div class="card-summary mb-4">
+        <div class="row">
+            <div class="col-md-4 mb-3 mb-md-0">
+                <div class="order-detail-label"><i class="fa-solid fa-user me-1"></i>Người đặt</div>
+                <div class="order-detail-value">@Model.ApplicationUser?.FullName</div>
+            </div>
+            <div class="col-md-4 mb-3 mb-md-0">
+                <div class="order-detail-label"><i class="fa-solid fa-calendar-days me-1"></i>Ngày đặt</div>
+                <div class="order-detail-value">@Model.OrderDate.ToString("dd/MM/yyyy HH:mm")</div>
+            </div>
+            <div class="col-md-4">
+                <div class="order-detail-label"><i class="fa-solid fa-box me-1"></i>Trạng thái</div>
+                <div class="order-detail-value">
+                    <span class="badge bg-@Model.Status.ToStatusColor() badge-status">
+                        @Model.Status.ToFriendlyString()
+                    </span>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3 mb-md-0">
+                <div class="order-detail-label"><i class="fa-solid fa-barcode me-1"></i>Mã đơn hàng</div>
+                <div class="order-detail-value">@Model.OrderCode</div>
+            </div>
+            <div class="col-md-4 mb-3 mb-md-0">
+                <div class="order-detail-label"><i class="fa-solid fa-credit-card me-1"></i>Hình thức thanh toán</div>
+                <div class="order-detail-value">
+                    @if (Model.PaymentMethod == PaymentMethod.BankTransfer)
+                    {
+                        <span class="badge bg-info text-dark">Chuyển khoản</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">COD</span>
+                    }
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="order-detail-label"><i class="fa-solid fa-money-bill-wave me-1"></i>Trạng thái thanh toán</div>
+                <div class="order-detail-value">
+                    @if (Model.PaymentMethod == PaymentMethod.BankTransfer)
+                    {
+                        <span class="badge bg-@(Model.IsPaid ? "primary" : "danger text-white")">
+                            @(Model.IsPaid ? "Đã thanh toán" : "Chưa thanh toán")
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">Thanh toán COD</span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Items Table -->
+    <div class="mb-4">
+        <div class="section-title"><i class="fa-solid fa-boxes-stacked me-1"></i> Sản phẩm trong đơn</div>
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Sản phẩm</th>
+                        <th>Giá</th>
+                        <th>Số lượng</th>
+                        <th>Thành tiền</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.OrderDetails)
+                    {
+                        <tr>
+                            <td>@item.Product?.Name</td>
+                            <td>
+                                <span class="fw-bold">@item.Price.ToString("N0", CultureInfo.InvariantCulture) VNĐ</span><br />
+                                @if (item.Product != null && item.Product.Price > item.Price)
+                                {
+                                    <small class="text-muted">
+                                        <del>@item.Product.Price.ToString("N0", CultureInfo.InvariantCulture) VNĐ</del>
+                                    </small>
+                                }
+                            </td>
+
+                            <td>@item.Quantity</td>
+                            <td>@((item.Price * item.Quantity).ToString("N0", CultureInfo.InvariantCulture)) VNĐ</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Tổng tiền -->
+        <div class="summary-total">
+            Tổng cộng: @Model.OrderDetails.Sum(x => x.Price * x.Quantity).ToString("N0", CultureInfo.InvariantCulture) VNĐ
+        </div>
+    </div>
+
+    <!-- Back Button -->
+    <a asp-action="Index" class="btn btn-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i> Quay lại danh sách
+    </a>
+    @if (Model.PaymentMethod == PaymentMethod.BankTransfer && !Model.IsPaid)
+    {
+        <form asp-action="ConfirmPayment" asp-route-id="@Model.Id" method="post" class="d-inline">
+            <button type="submit" class="btn btn-success ms-2">
+                <i class="fa-solid fa-check-circle me-1"></i> Xác nhận đã thanh toán
+            </button>
+        </form>
+    }
+
+</div>

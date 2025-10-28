@@ -1,0 +1,184 @@
+﻿@using WebBanHang.Models
+@model WebBanHang.Models.Promotion
+
+@{
+    ViewData["Title"] = "Chỉnh sửa chương trình khuyến mãi";
+    var products = ViewBag.Products as IEnumerable<Product>;
+    var categories = ViewBag.Categories as IEnumerable<Category>;
+}
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+<div class="container py-5">
+    <h2 class="fw-bold text-warning mb-4">
+        <i class="fa-solid fa-pen-to-square me-2"></i> Chỉnh sửa chương trình khuyến mãi
+    </h2>
+
+    <form asp-action="Edit" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+
+        <div class="row g-4">
+            <!-- LEFT -->
+            <div class="col-md-6">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Tên chương trình</label>
+                            <input asp-for="Name" class="form-control" />
+                            <span asp-validation-for="Name" class="text-danger small"></span>
+                        </div>                      
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Loại giảm giá</label>
+                            <select asp-for="DiscountType" class="form-select">
+                                <option value="0">Giảm theo %</option>
+                                <option value="1">Giảm theo số tiền</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Giá trị giảm</label>
+                            <input asp-for="DiscountValue" type="number" step="0.01" class="form-control" />
+                            <span asp-validation-for="DiscountValue" class="text-danger small"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Áp dụng cho</label>
+                            <select asp-for="TargetType" class="form-select" id="TargetType">
+                                <option value="0">Tất cả sản phẩm</option>
+                                <option value="1">Danh mục cụ thể</option>
+                                <option value="2">Sản phẩm cụ thể</option>
+                            </select>
+                        </div>
+
+                        <div id="categorySelector" class="mt-2 d-none">
+                            <label class="form-label fw-semibold">Chọn danh mục</label>
+                            @foreach (var cat in categories)
+                            {
+                                var isChecked = (ViewBag.SelectedCategoryIds as List<int>)?.Contains(cat.Id) == true;
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="selectedCategoryIds[]" value="@cat.Id" @(isChecked ? "checked" : "") />
+                                    <label class="form-check-label">@cat.Name</label>
+                                </div>
+                            }
+                        </div>
+
+                        <div id="productSelector" class="mt-2 d-none">
+                            <label class="form-label fw-semibold">Chọn sản phẩm</label>
+                            @foreach (var prod in products)
+                            {
+                                var isChecked = (ViewBag.SelectedProductIds as List<int>)?.Contains(prod.Id) == true;
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="selectedProductIds[]" value="@prod.Id" @(isChecked ? "checked" : "") />
+                                    <label class="form-check-label">@prod.Name</label>
+                                </div>
+                            }
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT -->
+            <div class="col-md-6">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Mô tả</label>
+                            <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+                            <span asp-validation-for="Description" class="text-danger small"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Ngày bắt đầu</label>
+                            <div class="input-group">
+                                <input asp-for="StartDate"
+                                       type="datetime-local"
+                                       class="form-control"
+                                       id="startDateInput"
+                                       value="@Model.StartDate.ToString("yyyy-MM-ddTHH:mm")" />
+                                <button type="button" class="btn btn-outline-secondary" onclick="setNow()">Hiện tại</button>
+                            </div>
+                            <span asp-validation-for="StartDate" class="text-danger small"></span>
+                        </div>
+
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Thời gian kéo dài</label>
+                            <div class="row g-2">
+                                <div class="col-3"><label>Tháng</label><input type="number" name="DurationMonths" value="@Model.DurationMonths" min="0" class="form-control" placeholder="Tháng" /></div>
+                                <div class="col-3"><label>Ngày</label><input type="number" name="DurationDays" value="@Model.DurationDays" min="0" class="form-control" placeholder="Ngày" /></div>
+                                <div class="col-3"><label>Giờ</label><input type="number" name="DurationHours" value="@Model.DurationHours" min="0" class="form-control" placeholder="Giờ" /></div>
+                                <div class="col-3"><label>Phút</label><input type="number" name="DurationMinutes" value="@Model.DurationMinutes" min="0" class="form-control" placeholder="Phút" /></div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Trạng thái</label>
+                            <select asp-for="IsActive" class="form-select">
+                                <option value="true">Đang hoạt động</option>
+                                <option value="false">Tạm ngưng</option>
+                            </select>
+                        </div>
+                       
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Button -->
+        <div class="mt-4">
+            <button type="submit" class="btn btn-success">
+                <i class="fa-solid fa-floppy-disk me-1"></i> Lưu thay đổi
+            </button>
+            <a asp-action="Index" class="btn btn-outline-secondary ms-2">
+                <i class="fa-solid fa-arrow-left me-1"></i> Hủy
+            </a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+
+    <script>
+        const targetSelect = document.getElementById("TargetType");
+        const catSelector = document.getElementById("categorySelector");
+        const prodSelector = document.getElementById("productSelector");
+
+        function toggleSelectors() {
+            const val = parseInt(targetSelect.value);
+            catSelector.classList.toggle("d-none", val !== 1);
+            prodSelector.classList.toggle("d-none", val !== 2);
+        }
+
+        document.addEventListener("DOMContentLoaded", toggleSelectors);
+        targetSelect.addEventListener("change", toggleSelectors);
+    </script>
+    <script>
+        // Gán 0 nếu người dùng xoá trắng input và rời ô
+        ['DurationMonths', 'DurationDays', 'DurationHours', 'DurationMinutes'].forEach(name => {
+            const input = document.querySelector(`input[name='${name}']`);
+            if (input) {
+                input.addEventListener("blur", function () {
+                    if (this.value.trim() === "") {
+                        this.value = 0;
+                    }
+                });
+            }
+        });
+    </script>
+    <script>
+        function setNow() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = (now.getMonth() + 1).toString().padStart(2, '0');
+            const day = now.getDate().toString().padStart(2, '0');
+            const hour = now.getHours().toString().padStart(2, '0');
+            const minute = now.getMinutes().toString().padStart(2, '0');
+
+            const formatted = `${year}-${month}-${day}T${hour}:${minute}`;
+            document.getElementById("startDateInput").value = formatted;
+        }
+    </script>
+
+}

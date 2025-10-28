@@ -1,0 +1,612 @@
+﻿@using WebBanHang.Models
+@model IEnumerable<WebBanHang.ViewModels.ProductWithSalesViewModel>
+
+@{
+	ViewData["Title"] = "Trang chủ";
+	var categories = ViewBag.Categories as List<Category>;
+	var currentSort = Context.Request.Query["sortOrder"].ToString().ToLower();
+	var search = Context.Request.Query["search"];
+	var categoryId = Context.Request.Query["categoryId"];
+	var minPrice = Context.Request.Query["minPrice"];
+	var maxPrice = Context.Request.Query["maxPrice"];
+
+	var marqueePromos = ViewBag.MarqueePromotions as List<WebBanHang.Models.Promotion>;
+}
+@if (marqueePromos != null && marqueePromos.Any())
+{
+    <div class="promo-marquee-wrapper overflow-hidden position-relative mb-4">
+        <div class="promo-marquee-track d-flex">
+            @foreach (var promo in marqueePromos.Concat(marqueePromos)) // nhân đôi để loop
+            {
+                <div class="promo-slide d-flex align-items-center me-5">
+                    <i class="bi bi-lightning-fill text-warning fs-5 me-2"></i>
+                    <span>
+                        <strong class="text-primary">@promo.Name:</strong>
+                        <span class="text-dark">@promo.Description</span>
+                        <span class="countdown text-danger fw-bold ms-2"
+                              data-end="@promo.EndDate.ToString("yyyy-MM-ddTHH:mm:ss")">
+                            Đang tính...
+                        </span>
+                    </span>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<!-- 📸 SLIDER BANNER -->
+<div class="d-flex justify-content-center">
+    <div id="homepageCarousel" class="carousel slide mb-4 shadow-sm rounded overflow-hidden w-100" data-bs-interval="3000"
+         style="max-width: 700px;" data-bs-ride="carousel">
+
+        <!-- Indicators -->
+        <div class="carousel-indicators">
+			<button type="button" data-bs-target="#homepageCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
+			<button type="button" data-bs-target="#homepageCarousel" data-bs-slide-to="1" aria-label="Slide 2"></button>
+			<button type="button" data-bs-target="#homepageCarousel" data-bs-slide-to="2" aria-label="Slide 3"></button>
+			<button type="button" data-bs-target="#homepageCarousel" data-bs-slide-to="3" aria-label="Slide 4"></button>
+			<button type="button" data-bs-target="#homepageCarousel" data-bs-slide-to="4" aria-label="Slide 5"></button>
+		</div>
+
+        <div class="carousel-inner">
+            <div class="carousel-item active">
+                <img src="/images/slider1.jpg" class="d-block w-100" alt="Slide 1">
+            </div>
+            <div class="carousel-item">
+                <img src="/images/slider2.jpg" class="d-block w-100" alt="Slide 2">
+            </div>
+            <div class="carousel-item">
+                <img src="/images/slider3.jpg" class="d-block w-100" alt="Slide 3">
+            </div>
+            <div class="carousel-item">
+                <img src="/images/slider4.jpg" class="d-block w-100" alt="Slide 4">
+            </div>
+            <div class="carousel-item">
+                <img src="/images/slider5.jpg" class="d-block w-100" alt="Slide 5">
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <button class="carousel-control-prev" type="button" data-bs-target="#homepageCarousel" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Trước</span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#homepageCarousel" data-bs-slide="next">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Sau</span>
+        </button>
+    </div>
+</div>
+
+
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-1">
+
+    <!-- BỘ LỌC – BÊN TRÁI -->
+    <form asp-action="Index" method="get" class="d-flex flex-wrap gap-2 align-items-end">
+        <!-- Danh mục -->
+        <select name="categoryId"
+                class="form-select form-select-sm shadow-sm border-1"
+                style="width: 170px;"
+                onchange="this.form.submit()">
+            <option value="">Tất cả loại</option>
+            @foreach (var cat in categories)
+            {
+                var isSelected = Context.Request.Query["categoryId"] == cat.Id.ToString();
+                <option value="@cat.Id" selected="@(isSelected)">@cat.Name</option>
+            }
+        </select>
+
+        <!-- Giá từ -->
+        <input type="number"
+               name="minPrice"
+               min="0"
+               step="1000"
+               value="@minPrice"
+               class="form-control form-control-sm shadow-sm border-1"
+               placeholder="Giá từ"
+               style="width: 110px;" />
+
+        <!-- Giá đến -->
+        <input type="number"
+               name="maxPrice"
+               min="0"
+               step="1000"
+               value="@maxPrice"
+               class="form-control form-control-sm shadow-sm border-1"
+               placeholder="Giá đến"
+               style="width: 110px;" />
+
+        <!-- Nút lọc -->
+        <button type="submit" class="btn btn-sm btn-primary shadow-sm d-flex align-items-center">
+            <i class="fas fa-filter me-1"></i> Lọc
+        </button>
+    </form>
+
+    <!-- SẮP XẾP – BÊN PHẢI -->
+    <div class="d-flex flex-wrap gap-2">
+        <a asp-action="Index"
+           asp-route-sortOrder="price_asc"
+           asp-route-search="@search"
+           asp-route-categoryId="@categoryId"
+           asp-route-minPrice="@minPrice"
+           asp-route-maxPrice="@maxPrice"
+           class="btn btn-sm @(currentSort == "price_asc" ? "btn-dark text-white border-2" : "btn-outline-dark")">
+            Giá ↑
+        </a>
+
+        <a asp-action="Index"
+           asp-route-sortOrder="price_desc"
+           asp-route-search="@search"
+           asp-route-categoryId="@categoryId"
+           asp-route-minPrice="@minPrice"
+           asp-route-maxPrice="@maxPrice"
+           class="btn btn-sm @(currentSort == "price_desc" ? "btn-dark text-white border-2" : "btn-outline-dark")">
+            Giá ↓
+        </a>
+
+        <a asp-action="Index"
+           asp-route-sortOrder="sold_desc"
+           asp-route-search="@search"
+           asp-route-categoryId="@categoryId"
+           asp-route-minPrice="@minPrice"
+           asp-route-maxPrice="@maxPrice"
+           class="btn btn-sm @(currentSort == "sold_desc" ? "btn-dark text-white border-2" : "btn-outline-dark")">
+            Bán chạy
+        </a>
+
+        <a asp-action="Index"
+           asp-route-sortOrder="newest"
+           asp-route-search="@search"
+           asp-route-categoryId="@categoryId"
+           asp-route-minPrice="@minPrice"
+           asp-route-maxPrice="@maxPrice"
+           class="btn btn-sm @(currentSort == "newest" ? "btn-dark text-white border-2" : "btn-outline-dark")">
+            Mới nhất
+        </a>
+    </div>
+
+</div>
+
+
+@if (!Model.Any())
+{
+	<p>Không tìm thấy sản phẩm nào.</p>
+}
+else
+{
+	<div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4 mt-1">
+		@foreach (var product in Model)
+		{
+			var firstImage = product.Product.Images?.FirstOrDefault()?.Url ?? "/images/no-image.png";
+
+			<div class="col">
+				<div class="card h-100 d-flex flex-column shadow-sm product-card border-0 @(product.Product.IsAvailable ? "" : "out-of-stock")" >
+					<a asp-controller="Product" asp-action="Display" asp-route-id="@product.Product.Id" class="text-decoration-none text-dark">
+						@if (product.FinalPrice < product.Product.Price && product.AppliedPromotion != null)
+						{
+							var discount = product.Product.Price - product.FinalPrice;
+							var percent = Math.Round((discount / product.Product.Price) * 100);
+							var promo = product.AppliedPromotion;
+
+							<div class="promo-ribbon">
+								@if (promo.DiscountType == DiscountType.Percentage)
+								{
+									<span>Giảm @percent%</span>
+								}
+								else if (promo.DiscountType == DiscountType.FixedAmount)
+								{
+									<span>Giảm @Math.Round(discount / 1000)k</span>
+								}
+							</div>
+						}
+
+
+
+						<img src="@firstImage"
+							 class="card-img-top"
+							 alt="@product.Product.Name"
+							 style="height: 260px; object-fit: contain;" />
+
+						<div class="card-body flex-shrink-1 p-2" style="max-height: 135px; font-size: 0.85rem;">
+							<h6 class="card-title fw-bold text-truncate mb-3" title="@product.Product.Name">
+								@product.Product.Name
+							</h6>
+
+							@if (product.FinalPrice < product.Product.Price)
+							{
+								<div class="mb-1">
+									<span class="text-danger fw-bold">@product.FinalPrice.ToString("N0") ₫</span>
+									<del class="text-muted ms-1">@product.Product.Price.ToString("N0") ₫</del>
+									<span class="badge bg-danger ms-1">Khuyến mãi</span>
+								</div>
+							}
+							else
+							{
+								<div class="mb-1 fw-semibold">@product.Product.Price.ToString("N0") ₫</div>
+							}
+
+							<!-- Đánh giá + bán -->
+							<div class="d-flex justify-content-between small text-muted mb-1">
+								<div class="d-flex align-items-center gap-1">
+									<span class="ms-1 text-dark fw-semibold">@product.AverageRating.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)</span>
+									@for (int i = 1; i <= 5; i++)
+									{
+										if (i <= Math.Floor(product.AverageRating))
+										{
+											<i class="fa-solid fa-star text-warning"></i>
+										}
+										else
+										{
+											<i class="fa-regular fa-star text-warning"></i>
+										}
+									}
+									
+								</div>
+								<div>@product.SoldCount đã bán</div>
+							</div>
+
+							<!-- Trạng thái -->
+							<div class="mb-2">
+								@if (product.Product.IsAvailable && product.Product.StockQuantity > 0)
+								{
+									<span class="badge bg-success">Còn hàng</span>
+								}
+								else
+								{
+									<span class="badge bg-danger">Hết hàng</span>
+								}
+
+							</div>
+						</div>
+					</a>
+
+					<!-- Nút hành động -->
+					<div class="card-footer bg-white border-0 d-flex flex-wrap gap-2">
+						@if (product.Product.IsAvailable && product.Product.StockQuantity > 0)
+						{
+							<button type="button"
+									class="btn btn-sm btn-outline-primary w-100 add-to-cart-btn"
+									data-product-id="@product.Product.Id"
+									data-count="1">
+								<i class="fa fa-cart-plus me-1"></i> Thêm vào giỏ
+							</button>
+
+							<a asp-controller="Order" asp-action="BuyNow" asp-route-productId="@product.Product.Id" asp-route-quantity="1"
+							   class="btn btn-sm btn-warning w-100">
+								<i class="fa fa-bolt me-1"></i> Mua ngay
+							</a>
+						}
+						else
+						{
+							<span class="text-danger small">Sản phẩm không khả dụng</span>
+						}
+					</div>
+				</div>
+			</div>
+		}		
+	</div>
+	<!-- PHÂN TRANG -->
+	@if (ViewBag.TotalPages > 1)
+	{
+		int currentPage = ViewBag.CurrentPage;
+		int totalPages = ViewBag.TotalPages;
+
+		<nav class="mt-4">
+			<ul class="pagination justify-content-center custom-pagination">
+
+				<!-- Mũi tên trái -->
+				<li class="page-item @(currentPage == 1 ? "disabled" : "")">
+					<a class="page-link arrow"
+					   asp-action="Index"
+					   asp-route-page="@(currentPage - 1)"
+					   asp-route-search="@search"
+					   asp-route-categoryId="@categoryId"
+					   asp-route-minPrice="@minPrice"
+					   asp-route-maxPrice="@maxPrice"
+					   asp-route-sortOrder="@currentSort">
+						<i class="fa fa-angle-left"></i>
+					</a>
+				</li>
+
+				@for (int i = 1; i <= totalPages; i++)
+				{
+					<li class="page-item @(i == currentPage ? "active" : "")">
+						<a class="page-link"
+						   asp-action="Index"
+						   asp-route-page="@i"
+						   asp-route-search="@search"
+						   asp-route-categoryId="@categoryId"
+						   asp-route-minPrice="@minPrice"
+						   asp-route-maxPrice="@maxPrice"
+						   asp-route-sortOrder="@currentSort">@i</a>
+					</li>
+				}
+
+				<!-- Mũi tên phải -->
+				<li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+					<a class="page-link arrow"
+					   asp-action="Index"
+					   asp-route-page="@(currentPage + 1)"
+					   asp-route-search="@search"
+					   asp-route-categoryId="@categoryId"
+					   asp-route-minPrice="@minPrice"
+					   asp-route-maxPrice="@maxPrice"
+					   asp-route-sortOrder="@currentSort">
+						<i class="fa fa-angle-right"></i>
+					</a>
+				</li>
+			</ul>
+		</nav>
+	}
+}
+<div id="addToCartAlert" class="alert alert-primary position-fixed text-center shadow"
+	 style="display: none; z-index: 9999; top: 40%; left: 50%; transform: translate(-50%, -50%); min-width: 300px;">
+	Sản phẩm đã được thêm vào giỏ hàng!
+</div>
+
+<style>
+	select.form-select-sm:hover {
+		border-color: #0d6efd;
+		box-shadow: 0 0 6px rgba(13, 110, 253, 0.25);
+	}
+
+
+		.product-card:hover {
+			transform: translateY(-3px);
+			box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+		}
+
+	.card-title {
+		font-size: 1rem;
+		line-height: 1.3;
+
+	}
+
+	.product-card {
+		overflow: hidden;
+		transition: transform 0.2s ease, box-shadow 0.2s ease;
+	}
+
+		.product-card:hover {
+			transform: translateY(-3px);
+			box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+		}
+
+		.product-card img {
+			width: 100%;
+			height: 200px;
+			object-fit: contain;
+			object-position: center;
+			background-color: #f9f9f9;
+			display: block;
+		}
+	/* Làm mờ toàn bộ card nhưng vẫn cho click */
+	.out-of-stock {
+		position: relative;
+		opacity: 0.6;
+		filter: grayscale(30%);
+	}
+
+		/* Hiển thị nhãn Hết hàng */
+		.out-of-stock::before {
+			content: "Hết hàng";
+			position: absolute;
+			top: 0.75rem;
+			left: 0.75rem;
+			background: rgba(220, 53, 69, 0.9); /* Bootstrap danger */
+			color: #fff;
+			padding: 4px 10px;
+			font-size: 0.75rem;
+			font-weight: 500;
+			border-radius: 4px;
+			z-index: 10;
+			pointer-events: none; /* không che click vào link */
+			box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+		}
+
+	.form-label {
+		font-weight: 600;
+		font-size: 0.9rem;
+	}
+
+	.pagination .page-link {
+		padding: 6px 12px;
+		font-size: 0.9rem;
+		border-radius: 0.25rem;
+	}
+
+	.custom-pagination .page-link {
+		border: none;
+		background-color: transparent;
+		color: #333;
+		font-weight: 500;
+		margin: 0 4px;
+		border-radius: 6px;
+		transition: all 0.2s ease;
+		padding: 6px 12px;
+	}
+
+	.custom-pagination .page-item.active .page-link {
+		background-color: #007bff;
+		color: #fff;
+		font-weight: bold;
+		box-shadow: 0 0 0 2px rgba(0,123,255,0.2);
+	}
+
+	.custom-pagination .page-link:hover {
+		background-color: #f0f0f0;
+		text-decoration: none;
+	}
+
+	.custom-pagination .page-item.disabled .page-link {
+		opacity: 0.4;
+		pointer-events: none;
+	}
+
+	.custom-pagination .page-link.arrow {
+		font-size: 1.1rem;
+		padding: 6px 10px;
+		font-weight: bold;
+	}
+	.promo-ribbon {
+		position: absolute;
+		top: 0;
+		right: 0;
+		background: linear-gradient(45deg,#990000, #FF0000); /* Gradient đẹp */
+		color: white;
+		padding: 4px 12px;
+		font-size: 0.75rem;
+		font-weight: bold;
+		clip-path: polygon(100% 0, 100% 100%, 50% 80%, 0 100%, 0 0); /* Hình dạng góc xéo */
+		z-index: 20;
+		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+		text-align: center;
+		line-height: 1.4;
+	}
+#homepageCarousel img {
+    height: 400px;
+    object-fit: cover;
+    object-position: center;
+    transition: transform 0.6s ease-in-out;
+}
+
+.carousel-inner {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.carousel-item {
+    transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    backface-visibility: hidden;
+}
+
+.carousel-item-next,
+.carousel-item-prev,
+.carousel-item.active {
+    display: block;
+}
+
+/* Nút chỉ số — — — */
+.carousel-indicators [data-bs-target] {
+    width: 20px;
+    height: 3px;
+    border-radius: 0;
+    background-color: #999;
+    opacity: 0.5;
+    margin: 0 4px;
+    transition: all 0.3s;
+}
+
+.carousel-indicators .active {
+    background-color: #fff;
+    opacity: 1;
+}
+
+
+</style>
+<style>
+.promo-marquee-wrapper {
+    background: #fefefe;
+    border-top: 1px solid #ddd;
+    border-bottom: 1px solid #ddd;
+    padding: 10px 0;
+    max-height: 52px;
+    position: relative;
+}
+
+.promo-marquee-track {
+    display: flex;
+    width: fit-content;
+    animation: promoScroll 20s linear infinite;
+}
+
+.promo-slide {
+    flex-shrink: 0;
+    white-space: nowrap;
+    margin-right: 7rem;
+    font-size: 0.95rem;
+}
+
+@@keyframes promoScroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); } /* Loop seamless */
+}
+
+.promo-marquee-wrapper {
+    background: #fefefe;
+    border-top: 1px solid #ddd;
+    border-bottom: 1px solid #ddd;
+    padding: 10px 0;
+    max-height: 52px;
+    position: relative;
+    border-radius: 12px; /* ✅ Bo góc nhẹ */
+}
+
+</style>
+
+
+
+@section Scripts {
+	<script>
+		$(document).ready(function () {
+			$('.add-to-cart-btn').click(function () {
+				const productId = $(this).data('product-id');
+				const count = $(this).data('count');
+
+				$.ajax({
+					url: '/ShoppingCart/AddToCart',
+					method: 'POST',
+					data: { productId: productId, count: count },
+					success: function (res) {
+						if (res.success) {
+							updateCartCount(); // ✅ Gọi hàm toàn cục
+
+							// Hiện thông báo thêm vào giỏ hàng
+							const alertBox = $('#addToCartAlert');
+							alertBox.stop(true, true).fadeIn().delay(2000).fadeOut();
+						}
+					},
+					error: function () {
+						alert("Vui lòng đăng nhập để thêm vào giỏ hàng.");
+						window.location.href = '/Identity/Account/Login';
+					}
+				});
+			});
+		});
+	</script>
+	<script>
+		function updatePromoCountdown() {
+			document.querySelectorAll('.countdown').forEach(span => {
+				const endTime = new Date(span.dataset.end);
+				const now = new Date();
+				let diff = endTime - now;
+
+				if (diff <= 0) {
+					span.innerText = ' (Đã hết hạn)';
+					return;
+				}
+
+				const totalSec = Math.floor(diff / 1000);
+				const days = Math.floor(totalSec / (24 * 60 * 60));
+				const hours = Math.floor((totalSec / 3600) % 24);
+				const minutes = Math.floor((totalSec / 60) % 60);
+				const seconds = totalSec % 60;
+
+				const parts = [];
+				if (days > 0) parts.push(`${days} ngày`);
+				if (hours > 0 || days > 0) parts.push(`${hours} giờ`);
+				if (minutes > 0 || hours > 0 || days > 0) parts.push(`${minutes} phút`);
+				parts.push(`${seconds} giây`);
+
+				span.innerText = `(${parts.join(' ')})`;
+			});
+		}
+
+		setInterval(updatePromoCountdown, 1000);
+		updatePromoCountdown();
+
+	</script>
+
+}
+
+

@@ -1,0 +1,1391 @@
+﻿@model WedBanHang.Models.Product
+@using Microsoft.AspNetCore.Mvc.Rendering
+@using WebBanHang.Models
+@{
+    ViewData["Title"] = "Chi tiết sản phẩm";
+    var reviews = ViewBag.Reviews as List<WebBanHang.Models.Review>; // hoặc Review nếu bạn đã đổi tên
+    // Razor: truyền số lượng tồn kho
+    var maxStock = Model.StockQuantity;
+    var pagedReviews = ViewBag.Reviews as List<Review>;
+    int currentPage = ViewBag.CurrentPage ?? 1;
+    int totalPages = ViewBag.TotalPages ?? 1;
+
+    var finalPrice = ViewBag.FinalPrice != null ? (decimal)ViewBag.FinalPrice : Model.Price;
+    var promo = ViewBag.AppliedPromotion as Promotion;
+    var discount = Model.Price - finalPrice;
+    var percent = Math.Round((discount / Model.Price) * 100);
+}
+<!-- Giao diện sản phẩm -->
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="row g-4 align-items-stretch">
+                <!-- Ảnh sản phẩm (Cột trái) -->
+                <div class="col-lg-5 d-flex">
+                    <div id="imageBox" class="product-image-wrapper w-100 border rounded p-3 shadow-sm bg-white h-auto">
+                        <!-- Ảnh chính -->
+                        <div class="main-image-box">
+                          
+                            @if (Model.Images != null && Model.Images.Any())
+                            {
+                                <img src="@Model.Images.First().Url" class="product-main-img" alt="Ảnh chính" />
+                            }
+                            else
+                            {
+                                <img src="https://via.placeholder.com/400x400?text=No+Image" class="product-main-img" alt="Không có ảnh" />
+                            }
+                        </div>
+
+                        <!-- Thumbnail -->
+                        <div class="thumbnail-wrapper position-relative mt-3">
+                            <!-- Nút trái -->
+                            <button type="button" class="scroll-btn left" onclick="scrollThumbnail(-1)">
+                                <i class="fa fa-chevron-left"></i>
+                            </button>
+
+                            <!-- Container bọc scroll + xử lý justify -->
+                            <div class="d-flex @(Model.Images.Count < 5 ? "justify-content-center" : "")">
+                                <div class="thumbnail-scroll-custom d-flex flex-nowrap gap-2">
+                                    @foreach (var img in Model.Images)
+                                    {
+                                        <img src="@img.Url"
+                                             class="product-thumbnail"
+                                             onclick="document.querySelector('.product-main-img').src='@img.Url'" />
+                                    }
+                                </div>
+                            </div>
+                            <!-- Nút phải -->
+                            <button type="button" class="scroll-btn right" onclick="scrollThumbnail(1)">
+                                <i class="fa fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- Thông tin sản phẩm -->
+                <div class="col-lg-7 d-flex flex-column">
+                    <!-- Tiêu đề nằm ngoài khung -->
+                    <h1 class="fw-bold mb-3" style="font-size: 1.75rem;">@Model.Name</h1>
+                    <div class="d-flex flex-wrap align-items-center text-muted small mb-2 gap-4">
+                        <div class="d-flex align-items-center">
+                            <i class="fa-solid fa-star text-warning me-1"></i>
+                            <span><strong>@(ViewBag.AverageRating ?? 0)</strong> / 5</span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <i class="fa-solid fa-cart-shopping text-secondary me-1"></i>
+                            <span><strong>@ViewBag.SoldCount</strong> đã bán</span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <i class="fa-regular fa-comment-dots text-secondary me-1"></i>
+                            <span><strong>@(ViewBag.TotalReviews ?? 0)</strong> bình luận</span>
+                        </div>
+                    </div>
+
+                   
+
+                    <!-- Khung nội dung được đẩy xuống đáy -->
+                    <div id="infoBox" class="w-100 p-4 bg-white border rounded shadow-sm d-flex flex-column justify-content-between flex-grow-1 h-auto">
+                        @if (promo != null && finalPrice < Model.Price)
+                        {
+                            <div class="sale-tag">
+                                <div class="tag-hole"></div>
+                                <div class="tag-string"></div>
+                                <div class="tag-label">
+                                    @Html.Raw(
+                                        promo.DiscountType == DiscountType.Percentage
+                                            ? $"Giảm<br/>{percent}%"
+                                            : $"Giảm<br/>{Math.Round(discount / 1000)}k"
+                                    )
+                                </div>
+                            </div>
+                        }
+                        <!-- Giá -->
+                        <div class="mb-3 position-relative">
+                            <span class="text-muted me-2">Giá bán:</span>
+
+                            @if (finalPrice < Model.Price)
+                            {
+                                <span class="text-danger fw-bold fs-3">@finalPrice.ToString("N0") ₫</span>
+                                <del class="text-muted ms-2 fs-5">@Model.Price.ToString("N0") ₫</del>
+                               
+                            }
+                            else
+                            {
+                                <span class="text-dark fw-bold fs-3">@Model.Price.ToString("N0") ₫</span>
+                            }
+                        </div>
+
+                        <!-- Thông tin sản phẩm -->
+                        <ul class="list-unstyled mb-4">
+                            <li class="mb-2">
+                                <i class="fa-solid fa-tag me-2 text-secondary"></i>
+                                <strong>Danh mục:</strong> @Model.Category?.Name
+                            </li>
+                            <li class="mb-2">
+                                <i class="fa-solid fa-boxes-stacked me-2 text-secondary"></i>
+                                <strong>Tồn kho:</strong> @Model.StockQuantity
+                            </li>
+                            <li>
+                                <i class="fa-solid fa-circle-check me-2 text-secondary"></i>
+                                <strong>Trạng thái:</strong>
+                                @if (Model.IsAvailable && Model.StockQuantity >0)
+                                {
+                                    <span class="badge bg-success ms-1">Còn hàng</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger ms-1">Hết hàng</span>
+                                }
+                            </li>
+                        </ul>
+
+
+                        <!-- Số lượng + nút mua -->
+                        @if (Model.IsAvailable && Model.StockQuantity > 0)
+                        {
+                            <div class="mt-4">
+                                <label class="form-label fw-semibold">Số lượng:</label>
+                                <div class="quantity-wrapper mb-3">
+                                    <button type="button" class="btn-minus" onclick="changeQuantity(-1)">
+                                        <i class="fa fa-minus"></i>
+                                    </button>
+                                    <input type="number" id="quantityInput" value="1" min="1" max="@Model.StockQuantity" />
+                                    <button type="button" class="btn-plus" onclick="changeQuantity(1)">
+                                        <i class="fa fa-plus"></i>
+                                    </button>
+                                </div>
+
+                                <div class="d-flex flex-wrap gap-2 mt-3">
+                                    <button type="button"
+                                            class="btn btn-primary px-4 add-to-cart-btn d-inline-flex align-items-center"
+                                            data-product-id="@Model.Id">
+                                        <i class="fa fa-cart-plus me-2"></i> Thêm vào giỏ
+                                    </button>
+
+                                    <form id="buyNowForm" asp-controller="Order" asp-action="BuyNow" method="get" class="d-inline">
+                                        <input type="hidden" name="productId" value="@Model.Id" />
+                                        <input type="hidden" id="buyNowQuantity" name="quantity" />
+                                        <button type="submit" class="btn btn-warning px-4">
+                                            <i class="fa fa-bolt me-1"></i> Mua ngay
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-danger mt-4 fw-semibold d-flex align-items-center" role="alert">
+                                <i class="fa fa-triangle-exclamation me-2"></i>
+                                Sản phẩm này hiện không khả dụng hoặc đã hết hàng.
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mô tả sản phẩm -->
+        <div class="mt-5">
+            <h4 class="mb-3 fw-bold text-uppercase text-dark pb-2">
+                <i class="fa fa-align-left me-2 text-primary"></i> Mô tả sản phẩm
+            </h4>
+
+            <div class="border rounded-3 p-4 bg-white shadow-sm" style="line-height: 1.8; font-size: 1rem;">
+                @if (!string.IsNullOrWhiteSpace(Model.Description))
+                {
+                    @Html.Raw(Model.Description)
+                }
+                else
+                {
+                    <p class="text-muted fst-italic">Chưa có mô tả cho sản phẩm này.</p>
+                }
+            </div>
+        </div>
+
+        <hr class="my-5" />
+
+        <!-- Đánh giá sản phẩm -->
+        <h3 id="review-title" class="mb-4 fw-bold text-uppercase ps-3 text-dark">
+            <i class="fa-regular fa-user me-2 text-dark"></i> Đánh giá khách hàng
+        </h3>
+
+
+        @if (ViewBag.TotalReviews > 0)
+        {
+            <div class="row align-items-center mb-4">
+                <!-- Cột điểm đánh giá -->
+                <div class="col-md-2 border-end text-center">
+                    <h4 class="fw-bold text-warning mb-1" style="font-size: 2rem;">
+                        @ViewBag.AverageRating.ToString("0.0")
+                        <small class="text-muted fs-6">/5</small>
+                    </h4>
+
+                    <div class="mb-2">
+                        @for (int i = 1; i <= 5; i++)
+                        {
+                            if (i <= Math.Floor((double)ViewBag.AverageRating))
+                            {
+                                <i class="fa-solid fa-star text-warning fs-5"></i>
+                            }
+                            else if (i - ViewBag.AverageRating < 1)
+                            {
+                                <i class="fa-solid fa-star-half-stroke text-warning fs-5"></i>
+                            }
+                            else
+                            {
+                                <i class="fa-regular fa-star text-warning fs-5"></i>
+                            }
+                        }
+                    </div>
+
+                    <div class="text-muted">@ViewBag.TotalReviews đánh giá</div>
+                </div>
+
+                <!-- Cột bộ lọc -->
+                <div class="col-md-10 mt-4 mt-md-0">
+                    <!-- Dòng 1: Tất cả và số sao -->
+                    <div class="d-flex flex-wrap gap-2 justify-content-start mb-2">
+                       <button class="btn btn-outline-dark btn-sm filter-button active"
+                                data-filter="all"
+                                onclick="loadReviewPage(1)">
+                            Tất cả
+                        </button>
+                       @for (int i = 5; i >= 1; i--)
+                        {
+                            <button class="btn btn-outline-secondary btn-sm filter-button"
+                                    data-filter="@i"
+                                    onclick="loadReviewPage(1)">
+                                @i <i class="fa-solid fa-star text-warning ms-1"></i>
+                            </button>
+                        }
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2 justify-content-start">
+                        <button class="btn btn-outline-primary btn-sm filter-button"
+                                data-filter="hasImage"
+                                onclick="loadReviewPage(1)">
+                            <i class="fa fa-image me-1"></i> Có hình ảnh
+                        </button>
+                       <button class="btn btn-outline-success btn-sm filter-button"
+                                data-filter="hasComment"
+                                onclick="loadReviewPage(1)">
+                            <i class="fa fa-comment me-1"></i> Có bình luận
+                        </button>
+
+                    </div>
+                </div>
+            </div>
+
+        }
+
+
+            <div id="review-container" class="border rounded p-4 bg-white shadow-sm">
+                @Html.Partial("_ReviewList", ViewBag.Reviews as List<Review>)
+            </div>
+        
+
+            <p id="no-review-message" class="text-muted mt-3" style="display: none;">
+                Không có đánh giá nào phù hợp với bộ lọc.
+            </p>
+      
+        <a asp-action="Index" class="btn btn-secondary mt-4">← Quay lại danh sách</a>
+    </div>
+</div>
+
+
+
+<div id="thankYouMessage" class="alert alert-success" style="display: none;">
+    Cảm ơn bạn đã đánh giá!
+</div>
+<!-- Modal xóa -->
+<form id="deleteForm" method="post" style="display:none;"></form>
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteLabel" aria-hidden="true">
+    <div class="modal-dialog" style="margin-top: 80px">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Xác nhận xoá đánh giá</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Bạn có chắc chắn muốn xoá đánh giá này không?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger" onclick="submitDelete()">Đồng ý</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal báo cáo -->
+<form id="reportForm" method="post" style="display:none;"></form>
+<div class="modal fade" id="reportModal" tabindex="-1"
+     aria-labelledby="reportLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="reportLabel">Báo cáo đánh giá</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <p>Hãy chọn lý do bạn muốn báo cáo đánh giá này:</p>
+
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="reason" id="spam" value="Spam" checked>
+                    <label class="form-check-label" for="spam">Spam / Quảng cáo</label>
+                </div>
+
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="reason" id="offensive" value="Ngôn ngữ phản cảm">
+                    <label class="form-check-label" for="offensive">Ngôn ngữ phản cảm</label>
+                </div>
+
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="reason" id="misinfo" value="Thông tin sai sự thật">
+                    <label class="form-check-label" for="misinfo">Thông tin sai sự thật</label>
+                </div>
+
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="reason" id="other" value="Khác">
+                    <label class="form-check-label" for="other">Khác</label>
+                    <textarea class="form-control mt-2 d-none" id="otherText"
+                              name="otherReason" rows="2"
+                              placeholder="Mô tả thêm..."></textarea>
+
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary"
+                        data-bs-dismiss="modal">
+                    Huỷ
+                </button>
+                <button type="button" class="btn btn-danger"
+                        onclick="submitReport()">
+                    Gửi báo cáo
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal chỉnh sửa -->
+<form id="editReviewForm" method="post" enctype="multipart/form-data">
+    <div class="modal fade" id="editReviewModal" tabindex="-1" aria-labelledby="editReviewLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg ">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Chỉnh sửa đánh giá</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <input type="hidden" id="editReviewId" name="Id" />
+                    <div class="mb-3">
+                        <label>Đánh giá:</label><br />
+                        <div id="editStarRating">
+                            @for (int i = 1; i <= 5; i++)
+                            {
+                                <i class="fa-regular fa-star rating-star-edit" data-value="@i"></i>
+                            }
+                        </div>
+
+                        <input type="hidden" name="Rating" id="editRating" value="0" />
+                    </div>
+                    <div class="mb-3">
+                        <label>Bình luận:</label>
+                        <textarea id="editComment" class="form-control" name="Comment" rows="4"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label>Ảnh đính kèm:</label><br />
+                        <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('editImageInput').click()">
+                            📷 Thêm ảnh
+                        </button>
+                        <hr />
+                        <input type="file" id="editImageInput" name="Images" accept="image/*" multiple style="display: none;" />
+                        <!-- Hiển thị ảnh đã có sẵn trong đánh giá -->
+                        <div id="existingImages" class="d-flex flex-wrap mb-2"></div>
+                      
+                        <!-- Hiển thị ảnh mới chọn -->
+                        <div id="newImageSection" style="display: none;">
+                            <hr />
+                            <label>Ảnh mới:</label>
+                        </div>
+                        <div id="editImagePreview" class="d-flex flex-wrap mt-2"></div>
+
+
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Huỷ</button>
+                    <button type="submit" class="btn btn-primary">Cập nhật</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+<div id="addToCartAlert" class="alert alert-primary position-fixed text-center shadow"
+	 style="display: none; z-index: 9999; top: 40%; left: 50%; transform: translate(-50%, -50%); min-width: 300px;">
+	Sản phẩm đã được thêm vào giỏ hàng!
+</div>
+
+<!-- Modal xem ảnh đánh giá -->
+<div class="modal fade" id="reviewImageModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content bg-light text-dark border-0 rounded-3 position-relative">
+
+      <!-- Ảnh hiển thị -->
+      <div class="modal-body text-center p-0">
+        <img id="reviewImageModalImg"
+             src=""
+             class="img-fluid w-100"
+             style="max-height: 80vh; object-fit: contain;" />
+      </div>
+
+      <!-- Nút đóng -->
+      <button type="button"
+              class="btn-close position-absolute top-0 end-0 m-3"
+              data-bs-dismiss="modal" aria-label="Close"></button>
+
+      <!-- Nút điều hướng trái -->
+      <button class="btn btn-outline-secondary btn-lg rounded-circle position-absolute top-50 start-0 translate-middle-y ms-3 border-0 bg-white"
+              id="prevReviewImageBtn" style="z-index: 1055;">
+        <i class="bi bi-chevron-left fs-3 text-dark"></i>
+      </button>
+
+      <!-- Nút điều hướng phải -->
+      <button class="btn btn-outline-secondary btn-lg rounded-circle position-absolute top-50 end-0 translate-middle-y me-3 border-0 bg-white"
+              id="nextReviewImageBtn" style="z-index: 1055;">
+        <i class="bi bi-chevron-right fs-3 text-dark"></i>
+      </button>
+
+    </div>
+  </div>
+</div>
+
+<style>
+    .btn-sm {
+        min-width: 90px;
+    }
+
+    .border-end {
+        border-right: 1px solid #dee2e6 !important;
+    }
+
+    @@media (max-width: 768px) {
+        .border-end
+
+    {
+        border: none !important;
+    }
+
+    }
+    .review-card:hover {
+        transform: translateY(-2px);
+        box-shadow: none;
+        transition: all 0.2s ease;
+    }
+
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.35em 0.6em;
+        border-radius: 0.3rem;
+    }
+
+    .review-card {
+        display: flex;
+        flex-direction: row;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+
+        .review-card[style*="display: none"] {
+            display: none !important;
+        }
+
+    .filter-button.active {
+        background-color: #0d6efd !important;
+        color: #fff !important;
+        border-color: #0d6efd !important;
+    }
+    /* Nút "active" theo đúng màu bootstrap outline */
+    .btn-outline-dark.active {
+        background-color: #212529 !important;
+        color: #fff !important;
+        border-color: #212529 !important;
+    }
+
+    .btn-outline-secondary.active {
+        background-color: #6c757d !important;
+        color: #fff !important;
+        border-color: #6c757d !important;
+    }
+
+    .btn-outline-success.active {
+        background-color: #198754 !important;
+        color: #fff !important;
+        border-color: #198754 !important;
+    }
+
+    .btn-outline-primary.active {
+        background-color: #0d6efd !important;
+        color: #fff !important;
+        border-color: #0d6efd !important;
+    }
+
+    /* Review dropdown toggle (ba chấm) */
+    .review-toggle {
+        opacity: 0.7;
+        transition: 0.2s;
+        outline: none;
+        border: none;
+        background: transparent;
+    }
+
+        .review-toggle:hover {
+            opacity: 1;
+        }
+
+        .review-toggle:focus {
+            box-shadow: none;
+            outline: none;
+        }
+
+    /* Sao đánh giá trong modal sửa */
+    .rating-star-edit {
+        font-size: 32px;
+        color: #FFD700;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+
+        .rating-star-edit.filled {
+            color: #FFD700;
+        }
+
+        .rating-star-edit.outlined {
+            color: transparent;
+            -webkit-text-stroke: 1px #FFD700;
+        }
+
+    /* Ảnh hiển thị trong chỉnh sửa đánh giá */
+    #existingImages img,
+    #editImagePreview img {
+        width: 100px;
+        height: 100px;
+        object-fit: cover;
+        border-radius: 6px;
+        margin-right: 8px;
+        margin-bottom: 8px;
+        border: 1px solid #ccc;
+    }
+
+    /* Ảnh đã tồn tại + nút xoá */
+    #existingImages .img-wrapper {
+        position: relative;
+        display: inline-block;
+        margin: 5px;
+    }
+
+        #existingImages .img-wrapper img {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
+        #existingImages .img-wrapper .close-btn {
+            position: absolute;
+            top: 0px;
+            right: 3px;
+            background: rgba(0, 0, 0, 1);
+            color: #fff;
+            font-size: 14px;
+            font-weight: bold;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            line-height: 18px;
+            text-align: center;
+            cursor: pointer;
+            padding: 0;
+            transition: background 0.2s ease;
+        }
+
+            #existingImages .img-wrapper .close-btn:hover {
+                background: #ff4d4f;
+            }
+
+    /* Ảnh trong card review */
+    .card-body img {
+        border-radius: 6px;
+        transition: transform 0.2s;
+        max-width: 100%;
+        height: auto;
+    }
+
+        .card-body img:hover {
+            transform: scale(1.05);
+        }
+
+    /* Ảnh sản phẩm chính */
+    img.img-fluid {
+        border: 1px solid #ddd;
+        padding: 5px;
+        background-color: #fff;
+    }
+
+    .product-image-wrapper {
+        width: 100%;
+        max-width: 480px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .main-image-box {
+        width: 100%;
+        height: 400px;
+        border: 1px solid #eee;
+        border-radius: 6px;
+        background-color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px;
+    }
+
+    .product-main-img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        transition: transform 0.3s ease;
+    }
+
+        .product-main-img:hover {
+            transform: scale(1.02);
+        }
+
+    .product-thumbnail {
+        width: 60px;
+        height: 60px;
+        object-fit: cover;
+        border: 2px solid transparent;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+        .product-thumbnail:hover {
+            border-color: #007bff;
+        }
+
+    .quantity-wrapper {
+        display: flex;
+        align-items: center;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        overflow: hidden;
+        width: fit-content;
+        background-color: #fff;
+    }
+
+        .quantity-wrapper button {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background-color: #f8f8f8;
+            font-size: 16px;
+            color: #333;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+            .quantity-wrapper button:hover {
+                background-color: #e2e2e2;
+            }
+
+        .quantity-wrapper input {
+            width: 60px;
+            height: 36px;
+            text-align: center;
+            border: none;
+            outline: none;
+            font-size: 15px;
+            background-color: transparent;
+        }
+
+            .quantity-wrapper input::-webkit-outer-spin-button,
+            .quantity-wrapper input::-webkit-inner-spin-button {
+                -webkit-appearance: none;
+                margin: 0;
+            }
+
+            .quantity-wrapper input[type=number] {
+                -moz-appearance: textfield;
+            }
+
+        .quantity-wrapper button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none; /* đảm bảo không thể bấm */
+        }
+
+    .add-to-cart-btn {
+        font-weight: 500;
+        font-size: 15px;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+    }
+
+        .add-to-cart-btn:hover {
+            background-color: #0069d9;
+            transform: scale(1.02);
+        }
+
+        .add-to-cart-btn i {
+            font-size: 16px;
+        }
+
+    /* Mô tả sản phẩm */
+    .description-box {
+        background-color: #fff;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        line-height: 1.8;
+        font-size: 1rem;
+    }
+    /* Ảnh phụ */
+    .thumbnail-scroll-custom {
+        overflow-x: auto;
+        overflow-y: hidden;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
+        /* Ẩn toàn bộ thanh cuộn + nút trái/phải */
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE */
+    }
+
+        .thumbnail-scroll-custom::-webkit-scrollbar {
+            display: none; /* Chrome, Safari */
+        }
+
+    /* Ảnh phụ */
+    .product-thumbnail {
+        width: 65px !important;
+        height: 65px !important;
+        object-fit: cover;
+        border-radius: 4px;
+        border: 2px solid transparent;
+        cursor: pointer;
+        flex: 0 0 auto;
+        transition: all 0.2s ease;
+    }
+
+        .product-thumbnail:hover {
+            border-color: #007bff;
+            transform: scale(1.05);
+        }
+
+    /* Nút mũi tên trái/phải */
+    .scroll-btn {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(255, 255, 255, 0.1); /* mờ nhẹ */
+        border: none;
+        backdrop-filter: blur(2px);
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        cursor: pointer;
+        z-index: 5;
+        transition: background 0.2s;
+    }
+
+        .scroll-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .scroll-btn.left {
+            left: -10px;
+        }
+
+        .scroll-btn.right {
+            right: -10px;
+        }
+
+    .custom-pagination .page-link {
+        border: none;
+        background-color: transparent;
+        color: #333;
+        font-weight: 500;
+        margin: 0 4px;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+        padding: 6px 12px;
+    }
+
+    .custom-pagination .page-item.active .page-link {
+        background-color: #007bff;
+        color: #fff;
+        font-weight: bold;
+        box-shadow: 0 0 0 2px rgba(0,123,255,0.2);
+    }
+
+    .custom-pagination .page-link:hover {
+        background-color: #f0f0f0;
+        text-decoration: none;
+    }
+
+    .custom-pagination .page-item.disabled .page-link {
+        opacity: 0.4;
+        pointer-events: none;
+    }
+
+    .custom-pagination .page-link.arrow {
+        font-size: 1.1rem;
+        padding: 6px 10px;
+        font-weight: bold;
+    }
+
+  #infoBox {
+        position: relative;
+    }
+
+.sale-tag {
+    position: absolute;
+    top: 36px;
+    right: -30px;
+    width: 110px;  /* Chiều ngang */
+    height: 50px;
+    background: transparent;
+    transform: rotate(105deg);
+    z-index: 20;
+}
+
+/* Tam giác đỏ bên trái */
+.sale-tag::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    border-top: 25px solid transparent;
+    border-bottom: 25px solid transparent;
+    border-right: 35px solid #ff0000;
+    z-index: 2;
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+}
+
+/* Hình chữ nhật trắng bên phải */
+.sale-tag::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 35px;
+    width: 75px;
+    height: 50px;
+    background: white;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    z-index: 1;
+}
+
+/* Dây tròn treo */
+.tag-string {
+    position: absolute;
+    top: 7px;   /* Giảm top để lên cao hơn */
+    right: 92px; /* Dịch sang phải */
+    width: 32px;
+    height: 32px;
+    border: 2px solid #333;
+    border-radius: 50%;
+    background: transparent;
+    z-index: 1;
+
+    transform: rotate(120deg);
+    transform-origin: center;
+}
+
+/* Lỗ tròn đen */
+.tag-hole {
+    position: absolute;
+    top: 50%;
+    left: 15px; /* Hoặc: left: calc(35px - 5px) nếu bạn dùng biến */
+    transform: translateY(-50%);
+    width: 10px;
+    height: 10px;
+    background: black;
+    border-radius: 50%;
+    box-shadow: inset 0 0 2px white;
+    z-index: 4;
+}
+
+/* Text giảm giá */
+.tag-label {
+    position: absolute;
+    left: 50px;
+    top: 25px;
+    transform: translateY(-50%) rotate(-90deg);
+    font-weight: 700;
+    font-size: 1rem;
+    font-family: Arial, 'Times New Roman';
+    color: #DD0000;
+    z-index: 5;
+}
+
+</style>
+
+@section Scripts{
+    <script>
+        document.querySelectorAll('.review-menu').forEach(menu => {
+            const toggle = menu.querySelector('[data-bs-toggle="dropdown"]');
+            const dropdown = new bootstrap.Dropdown(toggle);
+
+            let timer;
+
+            menu.addEventListener('mouseenter', () => {
+                clearTimeout(timer);
+                dropdown.show();
+            });
+
+            menu.addEventListener('mouseleave', () => {
+                timer = setTimeout(() => {
+                    dropdown.hide();
+                }, 300); // nhỏ delay để tránh nhấp nháy
+            });
+        });
+    </script>
+    <script>
+        let deleteReviewId = 0;
+
+        function confirmDelete(id) {
+            deleteReviewId = id;
+            const modal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+            modal.show();
+        }
+
+        function submitDelete() {
+            const form = document.getElementById('deleteForm');
+            form.action = `/Review/Delete/${deleteReviewId}`;
+            form.submit();
+        }
+    </script>
+    <script>
+        let reportReviewId = 0;
+        const isLoggedIn = @(User.Identity.IsAuthenticated.ToString().ToLower());
+        function openReport(id) {
+            if (!isLoggedIn) {
+                // 👉 Chuyển hướng đến login nếu chưa đăng nhập
+                window.location.href = `/Identity/Account/Login?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+                return;
+            }
+
+            // Nếu đã đăng nhập → mở modal
+            reportReviewId = id;
+            new bootstrap.Modal(document.getElementById('reportModal')).show();
+        }
+
+        function submitReport(){
+            const form   = document.getElementById('reportForm');
+            const reason = document.querySelector('input[name="reason"]:checked').value;
+            const other  = document.getElementById('otherText').value;
+
+            // tạo dữ liệu & post
+            form.action  = `/Review/Report/${reportReviewId}`;
+            form.innerHTML =
+                `<input type="hidden" name="reason" value="${reason}">
+                 <input type="hidden" name="other"  value="${other}">`;
+            form.submit();
+        }
+        document.querySelectorAll('input[name="reason"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                document.getElementById('otherText')
+                    .classList.toggle('d-none', radio.id !== 'other');
+            });
+        });
+    </script>
+
+    <script>
+        // Xử lý chọn số sao trong modal sửa
+        document.querySelectorAll('.rating-star-edit').forEach(star => {
+            star.addEventListener('click', function () {
+                const rating = parseInt(this.dataset.value);
+                document.getElementById('editRating').value = rating;
+
+                document.querySelectorAll('.rating-star-edit').forEach(s => {
+                    const val = parseInt(s.dataset.value);
+                    if (val <= rating) {
+                        s.classList.add('filled');
+                        s.classList.remove('outlined');
+                        s.classList.replace('fa-regular', 'fa-solid');
+                    } else {
+                        s.classList.remove('filled');
+                        s.classList.add('outlined');
+                        s.classList.replace('fa-solid', 'fa-regular');
+                    }
+                });
+            });
+        });
+
+        // Preview ảnh trong modal sửa
+        document.getElementById('editImageInput').addEventListener('change', function () {
+            const previewContainer = document.getElementById('editImagePreview');
+            const newImageSection = document.getElementById('newImageSection');
+
+            previewContainer.innerHTML = "";
+            const files = this.files;
+
+            if (files && files.length > 0) {
+                newImageSection.style.display = 'block'; // 👉 Hiện hr + label khi có ảnh
+
+                Array.from(files).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        const img = document.createElement("img");
+                        img.src = e.target.result;
+                        previewContainer.appendChild(img);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            } else {
+                newImageSection.style.display = 'none'; // 👉 Ẩn lại nếu không có ảnh
+            }
+        });
+        function openEditModal(reviewId, rating, comment, images = []) {
+            document.getElementById("editReviewId").value = reviewId;
+            document.getElementById("editRating").value = rating;
+            document.getElementById("editComment").value = comment;
+
+            // Hiển thị sao
+            document.querySelectorAll('.rating-star-edit').forEach(s => {
+                const val = parseInt(s.dataset.value);
+                if (val <= rating) {
+                    s.classList.add('filled');
+                    s.classList.remove('outlined');
+                    s.classList.replace('fa-regular', 'fa-solid');
+                } else {
+                    s.classList.remove('filled');
+                    s.classList.add('outlined');
+                    s.classList.replace('fa-solid', 'fa-regular');
+                }
+            });
+
+            const existingContainer = document.getElementById("existingImages");
+            existingContainer.innerHTML = "";
+
+            images.forEach(url => {
+                const wrapper = document.createElement("div");
+                wrapper.className = "img-wrapper";
+
+                const img = document.createElement("img");
+                img.src = url;
+
+                const input = document.createElement("input");
+                input.type = "hidden";
+                input.name = "ExistingImageUrls";
+                input.value = url;
+
+                const closeBtn = document.createElement("button");
+                closeBtn.type = "button";
+                closeBtn.innerHTML = "×";
+                closeBtn.className = "close-btn";
+                closeBtn.onclick = function () {
+                    wrapper.remove();
+                };
+
+                wrapper.appendChild(img);
+                wrapper.appendChild(input);
+                wrapper.appendChild(closeBtn);
+                existingContainer.appendChild(wrapper);
+            });
+
+            // Reset ảnh mới
+            document.getElementById("editImageInput").value = "";
+
+            // Mở modal
+            const modal = new bootstrap.Modal(document.getElementById('editReviewModal'));
+            modal.show();
+
+            // Cập nhật form action
+            document.getElementById("editReviewForm").action = `/Review/Edit/${reviewId}`;
+        }
+    </script>
+    @* <script>
+        function filterReviews(filter, button) {
+            const reviews = document.querySelectorAll('.review-card');
+            const separators = document.querySelectorAll('.review-separator');
+            const reviewContainer = document.getElementById('review-container');
+            const noReviewMsg = document.getElementById('no-review-message');
+
+            filter = filter.toString();
+
+            // ✅ Tô nền nút được chọn
+            document.querySelectorAll('.filter-button').forEach(btn => btn.classList.remove('active'));
+            if (button) {
+                button.classList.add('active');
+            }
+
+            // Ẩn tất cả review và hr
+            reviews.forEach(card => card.style.display = 'none');
+            separators.forEach(hr => hr.style.display = 'none');
+
+            const visibleReviews = [];
+
+            reviews.forEach(card => {
+                const rating = parseInt(card.getAttribute('data-rating'));
+                const hasImage = card.getAttribute('data-has-image') === 'true';
+                const hasComment = card.getAttribute('data-has-comment') === 'true';
+
+                let show = false;
+
+                if (filter === 'all') {
+                    show = true;
+                } else if (filter === 'hasImage') {
+                    show = hasImage;
+                } else if (filter === 'hasComment') {
+                    show = hasComment;
+                } else if (!isNaN(parseInt(filter))) {
+                    show = rating === parseInt(filter);
+                }
+
+                if (show) {
+                    card.style.display = 'flex';
+                    visibleReviews.push(card);
+                }
+            });
+
+            for (let i = 0; i < visibleReviews.length - 1; i++) {
+                const next = visibleReviews[i].nextElementSibling;
+                if (next && next.classList.contains('review-separator')) {
+                    next.style.display = 'block';
+                }
+            }
+
+            if (visibleReviews.length === 0) {
+                reviewContainer.style.display = 'none';
+                noReviewMsg.style.display = 'block';
+            } else {
+                reviewContainer.style.display = 'block';
+                noReviewMsg.style.display = 'none';
+            }
+        }
+    </script> *@
+    <script>
+        function changeQuantity(change) {
+            const input = document.getElementById('quantityInput');
+            let val = parseInt(input.value) || 1;
+            val += change;
+            if (val < 1) val = 1;
+            input.value = val;
+
+            // Cập nhật số lượng cho nút "Mua ngay"
+            document.getElementById('buyNowQuantity').value = val;
+        }
+
+        function addToCart(productId) {
+            const quantity = document.getElementById('quantityInput').value || 1;
+
+            // Bạn có thể gọi API thêm vào giỏ tại đây hoặc xử lý form:
+            fetch(`/Cart/Add?productId=${productId}&quantity=${quantity}`, {
+                method: 'POST'
+            }).then(res => {
+                if (res.ok) {
+                    alert("Đã thêm vào giỏ hàng!");
+                }
+            });
+        }
+    </script>
+    <script>
+        $(document).ready(function () {
+            $('.add-to-cart-btn').click(function () {
+                const productId = $(this).data('product-id');
+                const quantity = parseInt($('#quantityInput').val()) || 1;
+
+                $.ajax({
+                    url: '/ShoppingCart/AddToCart',
+                    method: 'POST',
+                    data: { productId: productId, count: quantity },
+                    success: function (res) {
+                        if (res.success) {
+                            updateCartCount();
+
+                            // Hiển thị thông báo
+                            const alertBox = $('#addToCartAlert');
+                            alertBox.stop(true, true).fadeIn().delay(2000).fadeOut();
+                        }
+                    },
+                    error: function () {
+                        alert("Vui lòng đăng nhập để thêm vào giỏ hàng.");
+                        window.location.href = '/Identity/Account/Login';
+                    }
+                });
+            });
+        });
+    </script>
+
+    <script>
+        document.getElementById("buyNowForm").addEventListener("submit", function (e) {
+            e.preventDefault(); // ❗ Ngăn form submit mặc định
+
+            const qty = document.getElementById("quantityInput");
+            const quantity = qty.valueAsNumber || 1;
+
+            document.getElementById("buyNowQuantity").value = quantity;
+
+            // ✅ Submit lại thủ công sau khi chắc chắn quantity đã set
+            this.submit();
+        });
+    </script>
+    <script>
+        const maxStock = @Model.StockQuantity;
+
+        function changeQuantity(delta) {
+            const input = document.getElementById("quantityInput");
+            let current = parseInt(input.value) || 1;
+
+            let newQty = current + delta;
+
+            if (newQty < 1) newQty = 1;
+            if (newQty > maxStock) newQty = maxStock;
+
+            input.value = newQty;
+
+            updateButtons(newQty);
+        }
+
+        // Nếu nhập trực tiếp
+        document.getElementById("quantityInput").addEventListener("input", function () {
+            let val = parseInt(this.value);
+            if (isNaN(val) || val < 1) val = 1;
+            if (val > maxStock) val = maxStock;
+
+            this.value = val;
+            updateButtons(val);
+        });
+
+        function updateButtons(currentQty) {
+            document.querySelector(".btn-minus").disabled = currentQty <= 1;
+            document.querySelector(".btn-plus").disabled = currentQty >= maxStock;
+        }
+
+        // Gọi khi trang load lần đầu
+        updateButtons(parseInt(document.getElementById("quantityInput").value));
+    </script>
+    <script>
+        window.addEventListener('load', function () {
+            const imgBox = document.getElementById('imageBox');
+            const infoBox = document.getElementById('infoBox');
+            if (imgBox && infoBox) {
+                const maxHeight = Math.max(imgBox.offsetHeight, infoBox.offsetHeight);
+                imgBox.style.height = maxHeight + 'px';
+                infoBox.style.height = maxHeight + 'px';
+            }
+        });
+    </script>
+
+   <script>
+        // Bước 1: Lấy danh sách ảnh và ảnh chính
+        let currentImageIndex = 0;
+        const thumbnails = Array.from(document.querySelectorAll('.product-thumbnail'));
+        const mainImage = document.querySelector('.product-main-img');
+
+        // Bước 2: Hàm xử lý khi bấm nút chuyển ảnh
+        function scrollThumbnail(direction) {
+            if (!thumbnails.length) return;
+
+            currentImageIndex += direction;
+
+            // Nếu vượt giới hạn thì quay vòng
+            if (currentImageIndex < 0) currentImageIndex = thumbnails.length - 1;
+            if (currentImageIndex >= thumbnails.length) currentImageIndex = 0;
+
+            // Cập nhật ảnh chính
+            mainImage.src = thumbnails[currentImageIndex].src;
+        }
+    </script>
+
+    <script>
+      let isLoadingReviews = false;
+
+        function loadReviewPage(page) {
+            if (isLoadingReviews) return; // Chặn nếu đang loading
+            isLoadingReviews = true;
+
+            const productId = @Model.Id;
+
+            document.querySelectorAll('.filter-button').forEach(btn => btn.classList.remove('active'));
+            if (event?.target?.classList.contains('filter-button')) {
+                event.target.classList.add('active');
+            }
+
+            const activeFilterBtn = document.querySelector('.filter-button.active');
+            const filter = activeFilterBtn?.getAttribute('data-filter') || 'all';
+
+            fetch(`/Product/LoadReviews?productId=${productId}&page=${page}&filter=${filter}`)
+                .then(response => response.text())
+                .then(html => {
+                    document.getElementById("review-container").innerHTML = html;
+                    document.getElementById("review-title")?.scrollIntoView({ behavior: 'smooth' });
+                })
+                .finally(() => {
+                    isLoadingReviews = false; // Cho phép gọi tiếp
+                });
+        }
+
+    </script>
+
+    <script>
+        let reviewImages = @Html.Raw(Json.Serialize(ViewBag.AllReviewImageUrls ?? new List<string>()));
+        let currentIndex = 0;
+
+        document.addEventListener("click", function (e) {
+            if (e.target.classList.contains("global-review-image")) {
+                const clickedImg = e.target;
+
+                currentIndex = reviewImages.indexOf(clickedImg.src);
+                if (currentIndex === -1) currentIndex = 0;
+
+                showReviewImageModal(reviewImages[currentIndex]);
+                new bootstrap.Modal(document.getElementById("reviewImageModal")).show();
+            }
+        });
+
+        function showReviewImageModal(src) {
+            document.getElementById("reviewImageModalImg").src = src;
+        }
+
+        document.getElementById("prevReviewImageBtn").addEventListener("click", function () {
+            if (reviewImages.length === 0) return;
+            currentIndex = (currentIndex - 1 + reviewImages.length) % reviewImages.length;
+            showReviewImageModal(reviewImages[currentIndex]);
+        });
+
+        document.getElementById("nextReviewImageBtn").addEventListener("click", function () {
+            if (reviewImages.length === 0) return;
+            currentIndex = (currentIndex + 1) % reviewImages.length;
+            showReviewImageModal(reviewImages[currentIndex]);
+        });
+    </script>
+
+}

@@ -1,0 +1,240 @@
+﻿@using Microsoft.AspNetCore.Identity
+@using WebBanHang.Models
+@using WebBanHang.ViewModels
+@inject UserManager<ApplicationUser> UserManager
+@inject IHttpContextAccessor HttpContextAccessor
+@inject ApplicationDbContext _context
+
+@{
+    Layout = null;
+
+    var user = await UserManager.GetUserAsync(HttpContextAccessor.HttpContext.User);
+    var orders = _context.Orders
+        .Where(o => o.ApplicationUserId == user.Id && o.Status == OrderStatus.HoanThanh)
+        .ToList();
+
+    var totalOrders = orders.Count;
+    var totalRevenue = orders.SelectMany(o => o.OrderDetails ?? Enumerable.Empty<OrderDetail>()).Sum(od => od.Quantity * od.Price);
+    var totalProductsPurchased = orders.SelectMany(o => o.OrderDetails ?? Enumerable.Empty<OrderDetail>()).Sum(od => od.Quantity);
+
+    var dashboardModel = new UserDashboardViewModel
+            {
+                FullName = user.FullName,
+                Email = user.Email,
+                TotalOrders = totalOrders,
+                TotalRevenue = totalRevenue,
+                TotalProductsPurchased = totalProductsPurchased,
+                AvatarUrl = user.AvatarUrl
+            };
+    var notifications = _context.Notifications
+        .Where(n => n.UserId == user.Id)
+        .OrderByDescending(n => n.CreatedAt)
+        .Take(5) // hoặc bao nhiêu bạn muốn
+        .ToList();
+}
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <title>@ViewData["Title"] - Web Bán Hàng</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+
+</head>
+<body class="bg-light">
+    @await Html.PartialAsync("_HeaderPartial")
+
+    <div class="container-fluid" style="padding-top: 100px;">
+        <div class="row g-0">
+            <!-- SIDEBAR MENU -->
+            <aside class="col-lg-3 col-md-4 sidebar-custom bg-white border-end shadow-sm vh-100 position-sticky top-0 rounded-end">
+                <div class="p-4">
+                    <h5 class="text-dark mb-4 fw-bold text-uppercase px-3">Trang cá nhân</h5>
+
+                    <ul class="nav flex-column gap-1">
+                        <li class="nav-item">
+                            <a class="nav-link d-flex align-items-center px-3 py-2 rounded sidebar-link
+                           @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Product" ? "active" : "")"
+                               asp-action="Index" asp-controller="Product">
+                                <i class="bi bi-house me-2"></i>
+                                <span>Trang chủ</span>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a class="nav-link d-flex align-items-center px-3 py-2 rounded sidebar-link
+                           @(ViewContext.RouteData.Values["Action"]?.ToString() == "Dashboard" ? "active" : "")"
+                               asp-action="Dashboard" asp-controller="User">
+                                <i class="bi bi-person me-2"></i>
+                                <span>Tài khoản của bạn</span>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a class="nav-link d-flex align-items-center px-3 py-2 rounded sidebar-link
+                           @(ViewContext.RouteData.Values["Action"]?.ToString() == "History" ? "active" : "")"
+                               asp-action="History" asp-controller="Order">
+                                <i class="bi bi-clock-history me-2"></i>
+                                <span>Lịch sử mua hàng</span>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a class="nav-link d-flex align-items-center px-3 py-2 rounded sidebar-link
+                           @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Notification" ? "active" : "")"
+                               asp-action="Index" asp-controller="Notification">
+                                <i class="bi bi-bell me-2"></i>
+                                <span>Thông báo</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- MAIN CONTENT -->
+            <main class="col-lg-9 col-md-8 px-4">
+                <div class="bg-white rounded shadow-sm p-4 mb-4">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center">
+                            <form id="avatarForm" enctype="multipart/form-data" method="post">
+                                <label for="avatarUpload" class="position-relative" style="cursor: pointer;">
+                                    <div class="position-relative d-inline-block me-4" style="width: 70px; height: 70px;">
+                                        <img id="avatarPreview"
+                                             src="@(!string.IsNullOrEmpty(user.AvatarUrl) ? user.AvatarUrl : "/images/default-avatar.jpg")"
+                                             class="rounded-circle shadow-sm"
+                                             style="width: 70px; height: 70px; object-fit: cover;" />
+
+                                        <div class="position-absolute bottom-0 end-0" style="transform: translate(10%, 10%);">
+                                            <i class="fa fa-camera bg-white rounded-circle p-1" style="font-size: 14px;"></i>
+                                        </div>
+                                    </div>
+                                    <input type="file" id="avatarUpload" name="avatar" accept="image/*" class="d-none" onchange="previewAndUploadAvatar(this)">
+                                </label>
+                            </form>
+                            <div>
+                                <h5 class="mb-1 text-uppercase">@dashboardModel.FullName</h5>
+                                <small class="text-muted">@dashboardModel.Email</small>
+                            </div>
+                        </div>
+                        <a asp-action="EditProfile" asp-controller="User" class="btn btn-outline-primary">Chỉnh sửa</a>
+                    </div>
+                </div>
+
+                <!-- Body render -->
+                <div class="bg-white p-4 rounded shadow-sm">
+                    @RenderBody()
+                </div>
+            </main>
+        </div>
+    </div>
+
+    @await Html.PartialAsync("_FooterPartial")
+
+
+    <style>
+        .sidebar-custom .nav-link {
+            color: #495057;
+            font-size: 1.2rem;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+
+            .sidebar-custom .nav-link i {
+                font-size: 1.3rem;
+                width: 20px;
+                text-align: center;
+                opacity: 0.8;
+            }
+
+            .sidebar-custom .nav-link:hover {
+                background-color: #f1f3f5;
+                color: #0d6efd;
+            }
+
+            .sidebar-custom .nav-link.active {
+                background-color: #e7f1ff;
+                color: #0d6efd;
+                font-weight: 600;
+                box-shadow: inset 4px 0 0 #0d6efd;
+            }
+
+    </style>
+    <script>
+        function previewAndUploadAvatar(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    document.getElementById('avatarPreview').src = e.target.result;
+                };
+                reader.readAsDataURL(input.files[0]);
+
+                const formData = new FormData();
+                formData.append('avatar', input.files[0]);
+
+                fetch('/User/UploadAvatar', {
+                    method: 'POST',
+                    body: formData
+                }).then(response => {
+                    if (!response.ok) {
+                        alert("Cập nhật avatar thất bại!");
+                    }
+                }).catch(error => {
+                    console.error("Lỗi khi tải ảnh:", error);
+                });
+            }
+        }
+    </script>
+    <script>
+        document.querySelectorAll('.dropdown-item').forEach(item => {
+            item.addEventListener('click', function () {
+                const notificationId = item.dataset.notificationId;
+
+                // Gửi yêu cầu AJAX để đánh dấu thông báo là đã đọc
+                fetch(`/Notification/MarkAsRead/${notificationId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }).then(response => {
+                    if (!response.ok) {
+                        alert('Lỗi khi đánh dấu thông báo là đã đọc.');
+                    } else {
+                        item.classList.add('text-muted');  // Đổi màu để chỉ ra thông báo đã đọc
+                    }
+                }).catch(error => {
+                    console.error('Lỗi khi gửi yêu cầu:', error);
+                });
+            });
+        });
+    </script>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script>
+        function updateCartCount() {
+            $.get('/ShoppingCart/GetCartCount', function (data) {
+                const badge = $('#cartCount');
+                if (data.count > 0) {
+                    badge.text(data.count);
+                    badge.show();
+                } else {
+                    badge.hide();
+                }
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            updateCartCount();
+            setTimeout(updateCartCount, 100);
+            window.addEventListener("pageshow", updateCartCount);
+        });
+    </script>
+    @RenderSection("Scripts", required: false)
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+

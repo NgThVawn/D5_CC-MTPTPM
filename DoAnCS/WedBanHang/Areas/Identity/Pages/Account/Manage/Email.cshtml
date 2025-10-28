@@ -1,0 +1,55 @@
+﻿@page
+@model EmailModel
+@{
+    ViewData["Title"] = "Quản lý Email";
+    ViewData["ActivePage"] = ManageNavPages.Email;
+}
+
+<div style="max-width: 600px;">
+    <h3 class="mb-3 fw-bold">
+         @ViewData["Title"]
+    </h3>
+
+    <partial name="_StatusMessage" for="StatusMessage" />
+
+    <form id="email-form" method="post" class="card shadow-sm p-4">
+        <div asp-validation-summary="All" class="text-danger" role="alert"></div>
+
+        @if (Model.IsEmailConfirmed)
+        {
+            <div class="form-floating mb-3 input-group">
+                <input asp-for="Email" class="form-control" disabled />
+                <label asp-for="Email"></label>
+                <span class="input-group-text bg-success text-white" title="Email đã xác nhận">
+                    <i class="fas fa-check-circle"></i>
+                </span>
+            </div>
+        }
+        else
+        {
+            <div class="form-floating mb-3">
+                <input asp-for="Email" class="form-control" disabled />
+                <label asp-for="Email"></label>
+                <button type="submit" asp-page-handler="SendVerificationEmail" class="btn btn-outline-primary mt-2">
+                    <i class="fas fa-paper-plane me-1"></i> Gửi xác nhận email
+                </button>
+            </div>
+        }
+
+        <hr class="my-3" />
+
+        <div class="form-floating mb-3">
+            <input asp-for="Input.NewEmail" class="form-control" placeholder="Nhập email mới..." />
+            <label asp-for="Input.NewEmail">Email mới</label>
+            <span asp-validation-for="Input.NewEmail" class="text-danger"></span>
+        </div>
+
+        <button id="change-email-button" type="submit" asp-page-handler="ChangeEmail" class="btn btn-primary w-100">
+            <i class="fas fa-sync-alt me-1"></i> Cập nhật Email
+        </button>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,233 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <title>@ViewData["Title"] - Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+    @RenderSection("Styles", required: false)
+
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .admin-wrapper {
+            display: flex;
+            min-height: 100vh;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        /* Sidebar mặc định */
+        .admin-sidebar {
+            width: auto;
+            height: 1100px;
+            transition: all 0.3s ease;
+            background-color: #ffffff;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem 1rem;
+            position: relative;
+            border-right: 1px solid #dee2e6;
+        }
+        /* Khi sidebar bị ẩn */
+        .admin-wrapper.sidebar-hidden .admin-sidebar {
+            transform: translateX(-100%);
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            z-index: 1000;
+        }
+
+            .admin-wrapper.sidebar-hidden .admin-sidebar::before {
+                content: '\f285'; /* bi-chevron-right */               
+            }
+
+            .admin-wrapper.sidebar-hidden .admin-sidebar::after {
+                border-radius: 25px 0 0 25px;
+                transform: scaleX(-1);
+            }
+
+        /* Nội dung chính */
+        .admin-content {
+            margin-left: 250px;
+            transition: all 0.3s ease;
+            flex-grow: 1;
+            padding: 2rem;
+        }
+
+        /* Khi sidebar bị ẩn, nội dung full width */
+        .admin-wrapper.sidebar-hidden .admin-content {
+            margin-left: 0;
+            width: 100%;
+        }
+
+            .admin-sidebar.hidden {
+                transform: translateX(-100%);
+            }
+
+            /* Nút toggle */
+            .admin-sidebar::after {
+                content: '';
+                position: absolute;
+                top: 150px;
+                right: -25px;
+                width: 30px;
+                height: 50px;
+                background-color: #fff;
+                border-radius: 0 25px 25px 0;
+                cursor: pointer;
+                z-index: 1001;
+            }
+
+            /* Mũi tên hiển thị riêng, không xoay hình tròn */
+            .admin-sidebar::before {
+                content: '\f284'; /* bi-chevron-left */
+                font-family: 'bootstrap-icons';
+                font-size: 0.8rem;
+                position: absolute;
+                top: 150px;
+                right: -25px;
+                width: 30px;
+                height: 50px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                pointer-events: none;
+                z-index: 1002;
+            }
+
+
+            .admin-sidebar h4 {
+                font-size: 1.4rem;
+                color: #0d6efd;
+                font-weight: bold;
+            }
+
+            .admin-sidebar .nav-link {
+                color: #495057;
+                padding: 0.65rem 1rem;
+                border-radius: 6px;
+                font-weight: 500;
+            }
+
+                .admin-sidebar .nav-link:hover,
+                .admin-sidebar .nav-link.active {
+                    background-color: #e7f1ff;
+                    color: #0d6efd;
+                }
+
+        footer {
+            padding: 1rem 2rem;
+            background-color: #ffffff;
+            border-top: 1px solid #dee2e6;
+            text-align: center;
+        }
+
+        .badge-notify {
+            font-size: 0.75rem;
+            background-color: #dc3545;
+            color: white;
+            border-radius: 10px;
+            padding: 0.2rem 0.5rem;
+        }
+
+        .admin-content {
+            transition: margin-left 0.3s ease;
+            margin-left: 20px; /* Bằng chiều rộng sidebar */
+            flex-grow: 1;
+            padding: 2rem;
+        }
+
+        /* Khi sidebar ẩn, margin-left = 0 để full width */
+        .admin-sidebar.hidden {
+            margin-right: 0;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="admin-wrapper">
+        <!-- Sidebar -->
+        <aside class="admin-sidebar" id="adminSidebar">
+            <a class="navbar-brand fw-bold" href="/Product/Index">
+                <img src="/images/logo.png" alt="WedBanHang Logo" style="height: 32px;" class="me-2" />
+                Technology Shop
+            </a>
+            <hr />
+            <partial name="_LoginPartial" />
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Product" ? "active" : "")" href="/Admin/Product">
+                        <i class="bi bi-box-seam me-2"></i> Sản phẩm
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "User" ? "active" : "")" href="/Admin/Category/">
+                        <i class="bi bi-tags me-2"></i> Loại
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "AdminOrder" ? "active" : "")" href="/Admin/AdminOrder/">
+                        <i class="bi bi-receipt me-2"></i> Đơn hàng
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "User" ? "active" : "")" href="/Admin/Statistics/Revenue">
+                        <i class="bi bi-graph-up-arrow me-2"></i> Thống kê
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "User" ? "active" : "")" href="/Admin/Review/">
+                        <i class="bi bi-star-half me-2"></i> Đánh giá
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "User" ? "active" : "")" href="/Admin/Promotion/">
+                        <i class="fa-solid fa-tag me-2"></i> Khuyến mãi
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "User" ? "active" : "")" href="/Admin/UserManagement/">
+                        <i class="bi bi-people me-2"></i> Người dùng
+                    </a>
+                </li>
+            </ul>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="admin-content">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="text-center mt-auto py-3 border-top shadow-lg">
+        <div class="text-center small text-muted fw-bold">
+            &copy; <script>document.write(new Date().getFullYear());</script> WedBanHang. All rights reserved.
+        </div>
+    </footer>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        const sidebar = document.getElementById('adminSidebar');
+        const wrapper = document.querySelector('.admin-wrapper');
+
+        sidebar.addEventListener('click', function (e) {
+            if (e.offsetX > sidebar.clientWidth - 25) {
+                wrapper.classList.toggle('sidebar-hidden');
+            }
+        });
+
+    </script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

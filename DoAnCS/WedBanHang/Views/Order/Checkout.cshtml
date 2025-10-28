@@ -1,0 +1,450 @@
+﻿@model List<WebBanHang.ViewModels.CheckoutItemViewModel>
+
+@{
+    ViewData["Title"] = "Xác nhận đơn hàng";
+}
+
+<h2 class="fw-bold text-dark mb-4">
+    <i class="bi bi-receipt me-2"></i> Xác nhận đơn hàng
+</h2>
+
+<form id="checkoutForm" method="post" asp-action="ConfirmOrder">
+    @Html.AntiForgeryToken()
+
+    <div class="table-responsive">
+        <table class="table align-middle bg-white shadow-sm rounded overflow-hidden">
+            <thead class="table-light text-uppercase small text-secondary border-bottom">
+                <tr>
+                    <th>Ảnh</th>
+                    <th>Tên sản phẩm</th>
+                    <th>Giá</th>
+                    <th class="text-center">Số lượng</th>
+                    <th>Thành tiền</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (int i = 0; i < Model.Count; i++)
+                {
+                    <tr class="align-middle border-bottom">
+                        <!-- Ảnh -->
+                        <td class="p-3">
+                            <img src="@Model[i].ProductImage" class="img-fluid rounded border" style="max-width: 80px;" />
+                            @* Hidden *@
+                            <input type="hidden" name="checkoutItems[@i].ProductId" value="@Model[i].ProductId" />
+                            <input type="hidden" name="checkoutItems[@i].ProductName" value="@Model[i].ProductName" />
+                            <input type="hidden" name="checkoutItems[@i].ProductImage" value="@Model[i].ProductImage" />
+                            <input type="hidden" name="checkoutItems[@i].Price" value="@Model[i].Price" />
+                            <input type="hidden" name="checkoutItems[@i].FinalPrice" value="@Model[i].FinalPrice" />
+                        </td>
+
+                        <!-- Tên sản phẩm -->
+                        <td class="fw-semibold text-dark" >
+                            @Model[i].ProductName
+                        </td>
+
+                        <!-- Giá -->
+                        <td class="fw-medium">
+                            @if (Model[i].FinalPrice < Model[i].Price)
+                            {
+                                var discountAmt = Model[i].Price - Model[i].FinalPrice;
+                                var percent = Model[i].Price > 0 ? Math.Round(discountAmt / Model[i].Price * 100) : 0;
+                                <div>
+                                    <span class="text-danger fw-bold me-1">@Model[i].FinalPrice.ToString("N0") ₫</span>
+                                    <small class="text-muted"><del>@Model[i].Price.ToString("N0") ₫</del></small><br />
+                                    <span class="badge bg-warning text-dark mt-1">
+                                        @(discountAmt >= 1000 ? $"Giảm {Math.Round(discountAmt / 1000)}k" : $"Giảm {percent}%")
+                                    </span>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="fw-semibold">@Model[i].Price.ToString("N0") ₫</span>
+                            }
+                        </td>
+
+                        <!-- Số lượng -->
+                        <td class="text-center">
+                            <div class="d-flex justify-content-center align-items-center gap-2">
+                                <button type="button" class="btn btn-outline-secondary btn-sm rounded-circle shadow-sm" style="border-width: 2px;"
+                                        onclick="changeQty(@i, -1)" id="decrease-@i"
+                                        @(Model[i].Quantity <= 1 ? "disabled" : "")>
+                                    <i class="bi bi-dash"></i>
+                                </button>
+
+                                <input type="text" name="checkoutItems[@i].Quantity" id="qty-@i"
+                                       value="@Model[i].Quantity" readonly
+                                       class="form-control form-control-sm text-center fw-bold border border-secondary"
+                                       style="width: 48px; border-radius: 8px;" />
+
+                                <button type="button" class="btn btn-outline-secondary btn-sm rounded-circle shadow-sm" style="border-width: 2px;"
+                                        onclick="changeQty(@i, 1)" id="increase-@i"
+                                        @(Model[i].Quantity >= Model[i].StockQuantity ? "disabled" : "")>
+                                    <i class="bi bi-plus"></i>
+                                </button>
+                            </div>
+                            <input type="hidden" id="stock-@i" value="@Model[i].StockQuantity" />
+                        </td>
+
+                        <!-- Thành tiền -->
+                        <td class="fw-bold text-success">
+                            <span id="subtotal-@i">@((Model[i].FinalPrice * Model[i].Quantity).ToString("N0")) VNĐ</span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+
+    <div class="mb-4">
+        <label class="fw-bold mb-2">Địa chỉ giao hàng:</label>
+
+        <div class="d-flex align-items-center gap-3">
+            <!-- Khung địa chỉ -->
+            <div class="d-inline-flex align-items-center gap-3 bg-light border shadow-sm px-3 py-3 rounded">
+                <i class="bi bi-geo-alt-fill text-danger fs-5"></i>
+                <span class="fw-medium text-dark">
+                    @(ViewBag.Address ?? "Chưa có địa chỉ")
+                </span>
+            </div>
+
+            <!-- Nút chỉnh sửa nằm ngoài -->
+            <a asp-action="EditProfile" asp-controller="User" class="btn btn-sm btn-outline-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                <i class="bi bi-pencil"></i>
+            </a>
+        </div>
+    </div>
+
+
+    <div class="mb-4">
+        <label class="fw-bold mb-3">Chọn hình thức thanh toán:</label>
+
+        <div class="d-flex flex-wrap gap-3">
+            <!-- COD -->
+            <label class="payment-option card border shadow-sm p-3 d-flex align-items-center flex-fill" style="cursor: pointer;" for="cod">
+                <input type="radio" class="form-check-input me-3 d-none" name="paymentMethod" id="cod" value="COD" checked>
+                <i class="bi bi-truck fs-4 text-primary me-3"></i>
+                <div>
+                    <div class="fw-bold text-dark">Thanh toán khi nhận hàng</div>
+                    <small class="text-muted">Nhận hàng rồi mới trả tiền</small>
+                </div>
+            </label>
+
+            <!-- Bank Transfer -->
+            <label class="payment-option card border shadow-sm p-3 d-flex align-items-center flex-fill" style="cursor: pointer;" for="bank">
+                <input type="radio" class="form-check-input me-3 d-none" name="paymentMethod" id="bank" value="BankTransfer">
+                <i class="bi bi-bank fs-4 text-success me-3"></i>
+                <div>
+                    <div class="fw-bold text-dark">Chuyển khoản ngân hàng</div>
+                    <small class="text-muted">Quét mã QR hoặc chuyển tay</small>
+                </div>
+            </label>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+
+        <!-- Nút quay lại bên trái -->
+        <a asp-action="Index" asp-controller="Product"
+           class="btn btn-outline-secondary btn-lg rounded-pill px-4 d-flex align-items-center gap-2">
+            <i class="bi bi-arrow-left fs-5"></i>
+            <span>Quay lại</span>
+        </a>
+
+        <!-- Tổng cộng + xác nhận bên phải -->
+        <div class="d-flex flex-column align-items-end text-end">
+            <h4 class="text-dark fw-bold mb-3">
+                Tổng cộng: <span id="totalPrice" class="text-danger fs-3">0</span>
+                <span class="text-muted">VNĐ</span>
+            </h4>
+
+            <button type="button"
+                    class="btn btn-success btn-lg rounded-pill px-4 shadow-sm d-flex align-items-center gap-2"
+                    onclick="submitOrder()">
+                <i class="bi bi-check2-circle fs-5"></i>
+                <span>Xác nhận đặt hàng</span>
+            </button>
+        </div>
+
+    </div>
+
+</form>
+
+<!-- Modal Chuyển Khoản -->
+<div class="modal fade" id="bankTransferModal" tabindex="-1" aria-labelledby="bankTransferModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 shadow p-0 border-0 overflow-hidden">
+
+            <!-- Header -->
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="bankTransferModalLabel">
+                    <i class="bi bi-bank2 me-2"></i>Thông tin chuyển khoản
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+
+            <!-- Body -->
+            <div class="modal-body text-center px-4 py-4">
+                <div class="mb-3 text-start">
+                    <p class="mb-1">
+                        <i class="bi bi-bank text-primary me-2"></i>Ngân hàng: <strong class="text-dark">BIDV</strong>
+                    </p>
+                    <p class="mb-1">
+                        <i class="bi bi-credit-card text-primary me-2"></i>Số tài khoản: <strong class="text-dark">1351479863</strong>
+                    </p>
+                    <p class="mb-3">
+                        <i class="bi bi-person-circle text-primary me-2"></i>Chủ tài khoản: <strong class="text-dark">TRAN BAO THIET</strong>
+                    </p>
+                </div>
+
+                <div class="alert alert-warning py-2 px-3 rounded-pill fw-semibold d-inline-block mb-3">
+                    <i class="bi bi-clipboard-check me-1"></i> Nội dung chuyển khoản:
+                    <span id="modalOrderCode" class="text-danger"></span>
+                </div>
+
+                <div class="my-3">
+                    <img id="modalQrImage" src="" class="img-fluid border rounded shadow-sm" style="max-width: 280px;" alt="QR chuyển khoản" />
+                </div>
+
+                <p class="text-muted small mt-2">
+                    Quét mã hoặc nhập tay để chuyển khoản.
+                </p>
+            </div>
+
+            <!-- Footer -->
+            <div class="modal-footer border-0 px-4 pb-4 justify-content-center">
+                <button type="button" class="btn btn-success rounded-pill px-4 fw-semibold"
+                        onclick="submitAfterTransfer()">
+                    <i class="bi bi-check2-circle me-1"></i> Tôi đã chuyển khoản
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal thiếu thông tin -->
+<div class="modal fade" id="userInfoModal" tabindex="-1" aria-labelledby="userInfoModalLabel" aria-hidden="true">
+    <div class="modal-dialog" style="margin-top: 80px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Thiếu thông tin</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <div class="modal-body">
+                Vui lòng nhập đầy đủ thông tin để đặt hàng.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <a href="/User/EditProfile" class="btn btn-primary">OK</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .table td, .table th {
+        vertical-align: middle;
+    }
+
+    .btn-outline-primary {
+        transition: all 0.2s ease;
+    }
+
+        .btn-outline-primary:hover {
+            background-color: #0d6efd;
+            color: #fff;
+        }
+
+        .btn-outline-primary.rounded-circle {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+
+    .btn-outline-secondary:disabled {
+        opacity: 0.4 !important;
+        border-color: #adb5bd !important; /* màu viền mờ hơn */
+        color: #adb5bd !important; /* icon mờ hơn */
+    }
+
+    .payment-option {
+        transition: border-color 0.3s, box-shadow 0.3s;
+        border: 2px solid #dee2e6;
+        border-radius: 10px;
+        background-color: #fff;
+        cursor: pointer;
+    }
+
+        .payment-option:hover {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.15rem rgba(13, 110, 253, 0.15);
+        }
+
+        .payment-option input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Khi được chọn */
+        .payment-option.active {
+            background-color: #e9f5ff;
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.15rem rgba(13, 110, 253, 0.15);
+        }
+
+            .payment-option.active i,
+            .payment-option.active .fw-bold {
+                color: #0d6efd !important;
+            }
+
+
+    input[type="radio"]:checked + i {
+        filter: brightness(1.2);
+    }
+
+    .btn-success:hover {
+        animation: pulse 0.15s ease-in-out;
+    }
+
+    @@keyframes pulse {
+        0%
+
+    {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.02);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+
+    }
+</style>
+
+@section Scripts {
+    <script>
+        function changeQty(index, delta) {
+            const qtyInput = document.getElementById("qty-" + index);
+            const maxStock = parseInt(document.getElementById("stock-" + index).value);
+            const price = parseInt(document.getElementsByName(`checkoutItems[${index}].FinalPrice`)[0].value);
+            const decreaseBtn = document.getElementById("decrease-" + index);
+            const increaseBtn = document.getElementById("increase-" + index);
+
+            let qty = parseInt(qtyInput.value);
+            qty += delta;
+            if (qty < 1) qty = 1;
+            if (qty > maxStock) qty = maxStock;
+
+            qtyInput.value = qty;
+            document.getElementById("subtotal-" + index).innerText = (price * qty).toLocaleString() + " VNĐ";
+            decreaseBtn.disabled = qty <= 1;
+            increaseBtn.disabled = qty >= maxStock;
+
+            updateTotal();
+        }
+
+        function updateTotal() {
+            let total = 0;
+            const rows = @Model.Count;
+            for (let i = 0; i < rows; i++) {
+                const subtotal = document.getElementById("subtotal-" + i).innerText.replace(/\D/g, '');
+                total += parseInt(subtotal || "0");
+            }
+            document.getElementById("totalPrice").innerText = total.toLocaleString();
+            return total;
+        }
+
+        function submitOrder() {
+            fetch('/Order/ValidateUserInfo', {
+                method: 'POST',
+                headers: {
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const bankRadio = document.getElementById("bank");
+                    if (bankRadio.checked) {
+                        qrContainer.style.display = "block"; // hiện QR khi chọn BankTransfer
+                        return;
+                    }
+                    document.getElementById('checkoutForm').submit();
+                } else {
+                    var modal = new bootstrap.Modal(document.getElementById('userInfoModal'));
+                    modal.show();
+                }
+            });
+        }
+
+        const codRadio = document.getElementById("cod");
+        const bankRadio = document.getElementById("bank");
+        const qrContainer = document.getElementById("qrContainer");
+        const qrImage = document.getElementById("qrImage");
+        const qrOrderCode = document.getElementById("qrOrderCode");
+
+        function checkPaymentMethod() {
+            if (bankRadio.checked) {
+                const amount = updateTotal();
+                const bank = "BIDV";
+                const stk = "1351479863";
+                const name = "TRAN BAO THIET";
+                const tempCode = "DH" + Math.floor(100000 + Math.random() * 900000);
+
+                const url = `https://img.vietqr.io/image/${bank}-${stk}-compact2.png?amount=${amount}&addInfo=${tempCode}&accountName=${name}`;
+
+                document.getElementById("modalQrImage").src = url;
+                document.getElementById("modalOrderCode").innerText = tempCode;
+
+                const modal = new bootstrap.Modal(document.getElementById('bankTransferModal'));
+                modal.show();
+            }
+        }
+
+
+        codRadio.addEventListener("change", checkPaymentMethod);
+        bankRadio.addEventListener("change", checkPaymentMethod);
+        window.onload = () => {
+            updateTotal();
+            checkPaymentMethod();
+        };
+
+        function submitAfterTransfer() {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('bankTransferModal'));
+            modal.hide();
+            document.getElementById('checkoutForm').submit();
+        }
+
+
+    </script>
+    <script>
+        document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                document.querySelectorAll('.payment-option').forEach(option => {
+                    option.classList.remove('active');
+                });
+
+                const selected = document.querySelector(`label[for="${radio.id}"]`);
+                selected.classList.add('active');
+            });
+        });
+
+        // Set mặc định
+        window.addEventListener('DOMContentLoaded', () => {
+            const checked = document.querySelector('input[name="paymentMethod"]:checked');
+            if (checked) {
+                const selected = document.querySelector(`label[for="${checked.id}"]`);
+                selected.classList.add('active');
+            }
+        });
+    </script>
+
+}

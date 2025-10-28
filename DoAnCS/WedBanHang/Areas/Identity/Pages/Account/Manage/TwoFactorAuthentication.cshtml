@@ -1,0 +1,78 @@
+﻿@page
+@using Microsoft.AspNetCore.Http.Features
+@model TwoFactorAuthenticationModel
+@{
+    ViewData["Title"] = "Xác thực hai bước (2FA)";
+    ViewData["ActivePage"] = ManageNavPages.TwoFactorAuthentication;
+}
+
+<div class="container py-4">
+    <h2 class="mb-3">@ViewData["Title"]</h2>
+    <partial name="_StatusMessage" for="StatusMessage" />
+
+    @{
+        var consentFeature = HttpContext.Features.Get<ITrackingConsentFeature>();
+        if (consentFeature?.CanTrack ?? true)
+        {
+            if (Model.Is2faEnabled)
+            {
+                <div class="mb-3">
+                    @if (Model.RecoveryCodesLeft == 0)
+                    {
+                        <div class="alert alert-danger">
+                            <strong>Không còn mã dự phòng.</strong> Hãy
+                            <a asp-page="./GenerateRecoveryCodes">tạo mã mới</a> để đăng nhập khi mất thiết bị.
+                        </div>
+                    }
+                    else if (Model.RecoveryCodesLeft <= 3)
+                    {
+                        <div class="alert alert-warning">
+                            <strong>Còn lại @Model.RecoveryCodesLeft mã dự phòng.</strong> Bạn nên
+                            <a asp-page="./GenerateRecoveryCodes">tạo mã mới</a>.
+                        </div>
+                    }
+                </div>
+
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    @if (Model.IsMachineRemembered)
+                    {
+                        <form method="post" class="d-inline">
+                            <button type="submit" class="btn btn-outline-secondary">Quên trình duyệt này</button>
+                        </form>
+                    }
+                    <a asp-page="./Disable2fa" class="btn btn-danger">Tắt 2FA</a>
+                    <a asp-page="./GenerateRecoveryCodes" class="btn btn-outline-primary">Tạo mã dự phòng</a>
+                </div>
+            }
+
+            <div class="card shadow-sm">
+                <div class="card-header bg-light fw-bold">
+                    Ứng dụng xác thực
+                </div>
+                <div class="card-body">
+                    @if (!Model.HasAuthenticator)
+                    {
+                        <p class="mb-3">Bạn chưa thiết lập ứng dụng xác thực.</p>
+                        <a asp-page="./EnableAuthenticator" class="btn btn-primary">Thêm ứng dụng xác thực</a>
+                    }
+                    else
+                    {
+                        <p class="mb-3">Bạn đã thiết lập ứng dụng xác thực.</p>
+                        <a asp-page="./EnableAuthenticator" class="btn btn-outline-primary me-2">Thiết lập lại ứng dụng</a>
+                        <a asp-page="./ResetAuthenticator" class="btn btn-outline-danger">Đặt lại ứng dụng</a>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-danger mt-3">
+                <strong>Chính sách cookie chưa được chấp nhận.</strong> Vui lòng chấp nhận để sử dụng xác thực 2 bước.
+            </div>
+        }
+    }
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
