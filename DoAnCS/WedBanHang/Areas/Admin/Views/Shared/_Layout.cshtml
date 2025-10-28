@@ -194,6 +194,11 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "User" ? "active" : "")" href="/Admin/AdminChat/">
+                        <i class="fa-brands fa-facebook-messenger me-2"></i> Nhắn tin
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "User" ? "active" : "")" href="/Admin/UserManagement/">
                         <i class="bi bi-people me-2"></i> Người dùng
                     </a>
