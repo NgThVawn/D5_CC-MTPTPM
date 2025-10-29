@@ -145,6 +145,62 @@ namespace WebBanHang.Areas.Admin.Controllers
             // (Tuỳ chọn) Gửi thông báo, email, log lịch sử...
             return RedirectToAction("Index");
         }
+        [HttpPost]
+        public async Task<IActionResult> ApproveCancel(int id)
+        {
+            var order = await _context.Orders.Include(o => o.OrderDetails)
+                                             .FirstOrDefaultAsync(o => o.Id == id);
 
+            if (order == null || order.Status != OrderStatus.ChoHuy)
+                return NotFound();
+
+            // Cập nhật trạng thái thành "Đã hủy"
+            order.Status = OrderStatus.DaHuy;
+
+            // Cập nhật lại tồn kho sản phẩm
+            foreach (var detail in order.OrderDetails)
+            {
+                var product = await _context.Products.FindAsync(detail.ProductId);
+                if (product != null)
+                {
+                    product.StockQuantity += detail.Quantity;
+                    if (product.StockQuantity > 0 && !product.IsAvailable)
+                        product.IsAvailable = true;
+                }
+            }
+
+            // Thêm thông báo
+            _context.Notifications.Add(new Notification
+            {
+                UserId = order.ApplicationUserId,
+                Message = $"Yêu cầu hủy đơn #{order.Id} đã được chấp nhận.",
+                CreatedAt = DateTime.Now
+            });
+
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> RejectCancel(int id)
+        {
+            var order = await _context.Orders.FindAsync(id);
+
+            if (order == null || order.Status != OrderStatus.ChoHuy)
+                return NotFound();
+
+            // Quay lại trạng thái trước đó (ví dụ: Đang chuẩn bị)
+            order.Status = OrderStatus.DangChuanBi;
+
+            _context.Notifications.Add(new Notification
+            {
+                UserId = order.ApplicationUserId,
+                Message = $"Yêu cầu hủy đơn #{order.Id} đã bị từ chối.",
+                CreatedAt = DateTime.Now
+            });
+
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Details), new { id });
+        }
     }
 }
