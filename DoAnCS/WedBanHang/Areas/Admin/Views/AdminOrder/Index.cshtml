@@ -10,6 +10,7 @@
         OrderStatus.DangVanChuyen => "primary",
         OrderStatus.DaGiao => "secondary",
         OrderStatus.HoanThanh => "success",
+        OrderStatus.ChoHuy => "danger text-dark",
         OrderStatus.DaHuy => "danger",
         _ => "light"
     };
@@ -72,9 +73,23 @@
 
                             @if (order.Status != OrderStatus.HoanThanh && order.Status != OrderStatus.DaHuy)
                             {
-                                <button class="btn btn-sm btn-outline-success btn-update-status" data-id="@order.Id">
-                                    <i class="bi bi-arrow-repeat"></i> @order.Status.GetActionLabel()
-                                </button>
+                                @if (order.Status == OrderStatus.ChoHuy)
+                                {
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#cancelActionModal"
+                                            data-id="@order.Id">
+                                        <i class="bi bi-exclamation-triangle me-1"></i> Xử lý hủy
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-sm btn-outline-success btn-update-status" data-id="@order.Id">
+                                        <i class="bi bi-arrow-repeat"></i> @order.Status.GetActionLabel()
+                                    </button>
+                                }
+
                                 <button class="btn btn-sm btn-outline-danger btn-cancel-order" data-id="@order.Id">
                                     <i class="bi bi-x-circle"></i> Hủy
                                 </button>
@@ -86,6 +101,37 @@
             }
         </tbody>
     </table>
+</div>
+
+<!-- Modal xử lý hủy đơn -->
+<div class="modal fade" id="cancelActionModal" tabindex="-1" aria-labelledby="cancelActionLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="cancelActionLabel"><i class="bi bi-exclamation-octagon me-2"></i>Xử lý yêu cầu hủy đơn</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2">Khách hàng đã yêu cầu hủy đơn hàng này.</p>
+                <p>Bạn có muốn xác nhận hủy đơn hay từ chối yêu cầu hủy?</p>
+            </div>
+            <div class="modal-footer">
+                <form id="approveCancelForm" method="post" asp-action="ApproveCancel" asp-controller="AdminOrder">
+                    <input type="hidden" name="id" id="approveCancelOrderId" />
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-check-circle me-1"></i> Xác nhận hủy đơn
+                    </button>
+                </form>
+
+                <form id="rejectCancelForm" method="post" asp-action="RejectCancel" asp-controller="AdminOrder">
+                    <input type="hidden" name="id" id="rejectCancelOrderId" />
+                    <button type="submit" class="btn btn-secondary">
+                        <i class="bi bi-x-circle me-1"></i> Từ chối hủy
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Styles {
@@ -175,6 +221,17 @@
                     else alert("Không thể hủy đơn hàng.");
                 });
             });
+        });
+    </script>
+    <script>
+        const cancelModal = document.getElementById('cancelActionModal');
+
+        cancelModal.addEventListener('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            const orderId = button.getAttribute('data-id');
+
+            document.getElementById('approveCancelOrderId').value = orderId;
+            document.getElementById('rejectCancelOrderId').value = orderId;
         });
     </script>
 }
