@@ -276,5 +276,55 @@ namespace WebBanHang.Controllers
             return RedirectToAction("Success");
         }
 
+        [HttpPost]
+        public async Task<IActionResult> RequestCancel(int orderId, string reason)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == orderId && o.ApplicationUserId == userId);
+
+            if (order == null)
+                return Json(new { success = false, message = "Không tìm thấy đơn hàng." });
+
+            // Chặn hủy nếu không nằm trong 2 trạng thái cho phép
+            if (order.Status != OrderStatus.ChoXacNhan && order.Status != OrderStatus.DangChuanBi)
+                return Json(new { success = false, message = "Chỉ có thể hủy đơn hàng khi đang ở trạng thái 'Chờ xác nhận' hoặc 'Đang chuẩn bị'." });
+
+            order.CancelReason = reason;
+            order.CancelRequestedAt = DateTime.Now;
+            order.CancelRequestedBy = userId;
+
+            bool cancelledImmediately = false;
+
+            if (order.Status == OrderStatus.ChoXacNhan)
+            {
+                //  Nếu đang chờ xác nhận → hủy ngay
+                order.Status = OrderStatus.DaHuy;
+                cancelledImmediately = true;
+            }
+            else if (order.Status == OrderStatus.DangChuanBi)
+            {
+                // Nếu đang chuẩn bị → chuyển sang chờ hủy
+                order.Status = OrderStatus.ChoHuy;
+            }
+
+            _context.Orders.Update(order);
+            await _context.SaveChangesAsync();
+
+            var message = cancelledImmediately
+                ? $"Đơn hàng #{order.Id} đã được hủy thành công."
+                : $"Yêu cầu hủy đơn hàng #{order.Id} đã được gửi. Vui lòng chờ xác nhận.";
+
+            _context.Notifications.Add(new Notification
+            {
+                UserId = order.ApplicationUserId,
+                Message = message,
+                CreatedAt = DateTime.Now
+            });
+
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true, message });
+        }
+
     }
 }

@@ -7,7 +7,8 @@
         DangVanChuyen,    // 2
         DaGiao,           // 3
         HoanThanh,        // 4
-        DaHuy             // 5
+        DaHuy ,            // 5
+            ChoHuy
     }
 
 }
