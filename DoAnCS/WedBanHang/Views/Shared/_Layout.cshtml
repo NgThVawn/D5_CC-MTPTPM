@@ -55,6 +55,10 @@
             </main>
         </div>
 
+    @if (User.Identity.IsAuthenticated)
+    {
+        @await Html.PartialAsync("_ChatPopup")
+    }
 
         @await Html.PartialAsync("_FooterPartial")
 
