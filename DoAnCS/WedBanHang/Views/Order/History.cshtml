@@ -529,7 +529,35 @@ else
                 });
             }
         });
+                // Khi mở modal hủy đơn
+        document.querySelectorAll('.btn-cancel-order').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const orderId = this.dataset.orderId;
+                document.getElementById('cancelOrderId').value = orderId;
+            });
+        });
+                // Gửi form hủy đơn
+        document.getElementById('cancelOrderForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
 
+            const response = await fetch('/Order/RequestCancel', {
+                method: 'POST',
+                body: formData
+            });
+
+            // ✅ Đọc JSON từ server
+            const result = await response.json();
+
+            if (result.success) {
+                alert(result.message); // 👉 Hiển thị đúng nội dung thực tế
+                bootstrap.Modal.getInstance(document.getElementById('cancelOrderModal')).hide();
+                location.reload();
+            } else {
+                alert(result.message || "Không thể hủy đơn hàng này.");
+            }
+        });
     </script>
 }
 
