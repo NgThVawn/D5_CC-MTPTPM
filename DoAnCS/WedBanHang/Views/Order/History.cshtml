@@ -148,7 +148,23 @@ else
                     }
                 </tbody>
             </table>
-            <div class="text-end mt-3">
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                @if (order.Status == OrderStatus.ChoXacNhan || order.Status == OrderStatus.DangChuanBi)
+                {
+                    <button type="button"
+                            class="btn btn-outline-danger btn-cancel-order"
+                            data-order-id="@order.Id"
+                            data-bs-toggle="modal"
+                            data-bs-target="#cancelOrderModal">
+                        <i class="fa fa-times-circle me-1"></i> Hủy đơn hàng
+                    </button>
+                }
+                else
+                {
+                    <!-- giữ chỗ để layout không bị lệch -->
+                    <div></div>
+                }
+
                 <div class="d-inline-block px-4 py-2 bg-light border rounded-pill shadow-sm fw-bold text-dark">
                     Tổng tiền: <span class="text-danger">@totalAmount.ToString("N0")</span> ₫
                 </div>
@@ -211,7 +227,30 @@ else
     <i class="fas fa-circle-check fa-2x mb-2 text-success"></i><br />
     Cảm ơn bạn đã đánh giá!
 </div>
-
+<!-- 🔻 Modal Hủy Đơn -->
+<div class="modal fade" id="cancelOrderModal" tabindex="-1" aria-labelledby="cancelOrderLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="cancelOrderForm" method="post">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="cancelOrderLabel">Hủy đơn hàng</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="cancelOrderId" name="orderId" />
+                    <div class="mb-3">
+                        <label class="form-label">Lý do hủy đơn</label>
+                        <textarea name="reason" class="form-control" rows="3" required placeholder="Vui lòng nhập lý do hủy đơn hàng..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-danger">Xác nhận hủy đơn</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Trở lại</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <style>
     .toast-message {
@@ -389,6 +428,18 @@ else
             font-weight: 600;
         }
 
+    .btn-cancel-order {
+        border-radius: 20px;
+        padding: 6px 18px;
+        transition: 0.2s;
+    }
+
+        .btn-cancel-order:hover {
+            background-color: #dc3545;
+            color: white;
+            transform: scale(1.03);
+        }
+
 </style>
 
 
@@ -478,7 +529,35 @@ else
                 });
             }
         });
+                // Khi mở modal hủy đơn
+        document.querySelectorAll('.btn-cancel-order').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const orderId = this.dataset.orderId;
+                document.getElementById('cancelOrderId').value = orderId;
+            });
+        });
+                // Gửi form hủy đơn
+        document.getElementById('cancelOrderForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
 
+            const response = await fetch('/Order/RequestCancel', {
+                method: 'POST',
+                body: formData
+            });
+
+            // ✅ Đọc JSON từ server
+            const result = await response.json();
+
+            if (result.success) {
+                alert(result.message); // 👉 Hiển thị đúng nội dung thực tế
+                bootstrap.Modal.getInstance(document.getElementById('cancelOrderModal')).hide();
+                location.reload();
+            } else {
+                alert(result.message || "Không thể hủy đơn hàng này.");
+            }
+        });
     </script>
 }
 

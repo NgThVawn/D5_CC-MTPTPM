@@ -1,0 +1,264 @@
+﻿@using Microsoft.AspNetCore.Identity
+@inject UserManager<WebBanHang.Models.ApplicationUser> UserManager
+@inject IHttpContextAccessor HttpContextAccessor
+
+@{
+    var currentUser = await UserManager.GetUserAsync(HttpContextAccessor.HttpContext.User);
+    var userAvatar = currentUser?.AvatarUrl ?? "/images/default-avatar.png";
+    var currentUserId = currentUser?.Id;
+}
+
+<div id="chatWidget" style="position: fixed; bottom: 24px; right: 24px; z-index: 9999;">
+    <button onclick="toggleChat()" class="btn btn-primary shadow rounded-circle px-2 py-2">
+        💬
+    </button>
+    <div id="chatBox" style="display: none; width: 450px;" class="card shadow-lg mt-2 rounded-4 border-0">
+        <div class="card-header bg-primary text-white py-2 px-3 d-flex justify-content-between align-items-center rounded-top-4">
+            <strong>💬 Chat hỗ trợ</strong>
+            <button class="btn-close btn-close-white btn-sm" onclick="toggleChat()"></button>
+        </div>
+        <div class="card-body p-3" id="chatMessages" style="height: 500px; overflow-y: auto; background: #f4f6f9;">
+            <!-- Tin nhắn sẽ được render -->
+        </div>
+        <div class="card-footer bg-white p-3 border-top">
+            <input type="text" id="chatInput" class="form-control form-control-sm rounded-pill px-3"
+                   placeholder="Nhập tin nhắn..." onkeypress="handleKeyPress(event)" />
+        </div>
+    </div>
+</div>
+
+<!-- SignalR Script -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+
+<script>
+    let connection;
+    let chatInitialized = false;
+    const userAvatar = "@userAvatar";
+    const currentUserId = "@currentUserId";
+
+    async function startSignalR() {
+        connection = new signalR.HubConnectionBuilder()
+            .withUrl("/chathub")
+            .build();
+
+        connection.on("ReceiveMessage", function (senderLabel, message, time, avatarUrl, senderId) {
+            const isUser = senderLabel === "Bạn";
+
+            const avatar = isUser ? userAvatar : (avatarUrl || "/images/logo.png");
+
+            const chatBox = document.getElementById("chatMessages");
+            if (!chatBox) return;
+
+            chatBox.innerHTML += `
+                <div class="chat-message ${isUser ? 'user' : 'admin'}">
+                    <div class="chat-name">${senderLabel}</div>
+                    <div class="message-row">
+                        <img class="avatar" src="${avatar}" alt="Avatar">
+                        <div class="bubble">${message}</div>
+                    </div>
+                </div>
+            `;
+            chatBox.scrollTop = chatBox.scrollHeight;
+        });
+
+
+
+        connection.onclose(() => {
+            console.warn("🚫 Mất kết nối SignalR. Tự động thử lại...");
+            setTimeout(startSignalR, 3000);
+        });
+
+        try {
+            await connection.start();
+            console.log("✅ SignalR connected");
+            } catch (err) {
+            console.error("❌ Không thể kết nối SignalR:", err.toString());
+        }
+    }
+
+    function handleKeyPress(event) {
+        if (event.key === "Enter") {
+            const input = document.getElementById("chatInput");
+            const message = input.value.trim();
+            if (message !== "") {
+                // Chỉ gửi, KHÔNG hiển thị — sẽ hiển thị khi nhận qua SignalR
+                connection.invoke("SendMessage", "popup", message)
+                    .catch(err => console.error("❌ Gửi lỗi:", err.toString()));
+                input.value = "";
+            }
+        }
+    }
+
+    function toggleChat() {
+        const box = document.getElementById("chatBox");
+        const isOpen = box.style.display === "block";
+
+        box.style.display = isOpen ? "none" : "block";
+
+        if (!isOpen && !chatInitialized) {
+            loadChatHistory(true);
+            startSignalR();
+            chatInitialized = true;
+        }
+    }
+
+    async function loadChatHistory(scrollToBottom = false) {
+        try {
+            const res = await fetch("/api/chat/messages");
+            const messages = await res.json();
+            const chatBox = document.getElementById("chatMessages");
+
+            if (!chatBox || chatBox.children.length > 0) return; // ✅ Tránh ghi đè nếu đã có tin realtime
+
+            let lastMessageTime = null;
+
+            messages.forEach(m => {
+                const isUser = m.sender === "Bạn";
+                const currentTime = new Date(m.rawTimestamp);
+
+                if (!lastMessageTime || Math.abs(currentTime - lastMessageTime) >= 60 * 60 * 1000) {
+                    const formatted = currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + " " +
+                        currentTime.toLocaleDateString();
+                    chatBox.innerHTML += `
+                        <div class="timestamp-separator">${formatted}</div>
+                    `;
+                }
+
+                chatBox.innerHTML += `
+                    <div class="chat-message ${isUser ? 'user' : 'admin'}">
+                        <div class="chat-name">${m.sender}</div>
+                        <div class="message-row">
+                            <img class="avatar" src="${m.avatar}" alt="Avatar">
+                            <div class="bubble">${m.content}</div>
+                        </div>
+                    </div>
+                `;
+
+                lastMessageTime = currentTime;
+            });
+
+            if (scrollToBottom) {
+                setTimeout(() => {
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }, 0);
+            }
+        } catch (err) {
+            console.error("Không thể tải lịch sử tin nhắn:", err);
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const chatBox = document.getElementById("chatMessages");
+        if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+    });
+</script>
+
+<style>
+    .chat-message {
+        margin-bottom: 16px;
+        max-width: 80%;
+        /* Giới hạn chiều ngang tin nhắn */
+    }
+
+        .chat-message.user .chat-name {
+            margin-right: 11px; /* hoặc giá trị bạn muốn */
+        }
+
+        .chat-message.admin .chat-name {
+            margin-left: 11px; /* hoặc giá trị bạn muốn */
+        }
+
+    /* Tên người gửi nằm trên cùng, sát bên trái với avatar */
+    .chat-name {
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: #555;
+        padding-left: 48px; /* cách avatar 40px + 8px gap */
+    }
+
+    /* Hàng chứa avatar và bubble - nằm ngang */
+    .message-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding-left: 0;
+    }
+
+    /* Avatar */
+    .avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 1px solid #ccc;
+        flex-shrink: 0;
+    }
+
+    /* Bubble */
+    .bubble {
+        background-color: #e4e6eb;
+        padding: 10px 14px;
+        border-radius: 16px;
+        max-width: 100%;
+        word-break: break-word;
+        white-space: pre-wrap;
+        line-height: 1.5;
+    }
+
+    /* Căn chỉnh tin nhắn user */
+    .chat-message.user {
+        margin-left: auto; /* đẩy sang phải */
+    }
+
+        .chat-message.user .chat-name {
+            padding-left: 0;
+            padding-right: 48px;
+            text-align: right;
+        }
+
+        .chat-message.user .message-row {
+            flex-direction: row-reverse; /* avatar bên phải, bubble bên trái */
+            text-align: right;
+            padding-right: 0;
+        }
+
+        .chat-message.user .bubble {
+            background-color: #0d6efd;
+            color: white;
+        }
+
+    /* Căn chỉnh tin nhắn admin */
+    .chat-message.admin .message-row {
+        flex-direction: row; /* avatar bên trái, bubble bên phải */
+    }
+
+    /* Nút chat */
+    #chatWidget .btn {
+        font-size: 1.25rem;
+        height: 48px;
+        width: 48px;
+        line-height: 1;
+    }
+
+    #chatBox {
+        font-family: "Segoe UI", sans-serif;
+        border: none;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+    }
+
+    #chatMessages {
+        scroll-behavior: smooth;
+        font-size: 0.95rem;
+        background: #f4f6f9;
+        height: 500px;
+        overflow-y: auto;
+    }
+
+    .timestamp-separator {
+        text-align: center;
+        font-size: 0.75rem;
+        color: #888;
+        margin: 12px 0;
+    }
+</style>

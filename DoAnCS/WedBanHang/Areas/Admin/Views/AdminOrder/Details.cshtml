@@ -109,7 +109,13 @@
             </div>
         </div>
     </div>
-
+    @if (!string.IsNullOrEmpty(Model.CancelReason))
+    {
+        <div class="alert alert-warning mt-4">
+            <h5><i class="fa-solid fa-triangle-exclamation me-2"></i>Lý do hủy đơn:</h5>
+            <p class="mb-0">@Model.CancelReason</p>
+        </div>
+    }
     <!-- Order Items Table -->
     <div class="mb-4">
         <div class="section-title"><i class="fa-solid fa-boxes-stacked me-1"></i> Sản phẩm trong đơn</div>
@@ -161,6 +167,19 @@
         <form asp-action="ConfirmPayment" asp-route-id="@Model.Id" method="post" class="d-inline">
             <button type="submit" class="btn btn-success ms-2">
                 <i class="fa-solid fa-check-circle me-1"></i> Xác nhận đã thanh toán
+            </button>
+        </form>
+    }
+    @if (Model.Status == OrderStatus.ChoHuy)
+    {
+        <form asp-action="ApproveCancel" asp-route-id="@Model.Id" method="post" class="d-inline">
+            <button type="submit" class="btn btn-danger">
+                <i class="fa-solid fa-check me-1"></i> Xác nhận hủy đơn
+            </button>
+        </form>
+        <form asp-action="RejectCancel" asp-route-id="@Model.Id" method="post" class="d-inline ms-2">
+            <button type="submit" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-xmark me-1"></i> Từ chối yêu cầu
             </button>
         </form>
     }

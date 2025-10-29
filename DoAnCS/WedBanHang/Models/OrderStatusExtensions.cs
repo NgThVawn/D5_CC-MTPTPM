@@ -12,6 +12,8 @@
                 OrderStatus.DaGiao => "Đã giao",
                 OrderStatus.HoanThanh => "Hoàn thành",
                 OrderStatus.DaHuy => "Đã hủy",
+                OrderStatus.ChoHuy => "Chờ hủy",
+
                 _ => "Không xác định"
             };
         }
@@ -25,6 +27,7 @@
                 OrderStatus.DaGiao => "secondary",
                 OrderStatus.HoanThanh => "success",
                 OrderStatus.DaHuy => "danger",
+                OrderStatus.ChoHuy => "warning",
                 _ => "light"
             };
         }
@@ -36,6 +39,7 @@
                 OrderStatus.DangChuanBi => "Chuẩn bị xong",
                 OrderStatus.DangVanChuyen => "Đã giao hàng",
                 OrderStatus.DaGiao => "Hoàn tất đơn",
+                OrderStatus.ChoHuy => "Xử lý hủy",
                 _ => "Tiếp theo"
             };
         }
@@ -49,6 +53,7 @@
                 OrderStatus.DaGiao => $"Đơn hàng #{orderId} đã được giao thành công.",
                 OrderStatus.HoanThanh => $"Đơn hàng #{orderId} đã hoàn tất. Cảm ơn bạn đã mua hàng!",
                 OrderStatus.DaHuy => $"Đơn hàng #{orderId} đã bị hủy.",
+                OrderStatus.ChoHuy => $"Đơn hàng #{orderId} đang được yêu cầu hủy. Chờ admin xử lý.",
                 _ => $"Đơn hàng #{orderId} có cập nhật mới."
             };
         }

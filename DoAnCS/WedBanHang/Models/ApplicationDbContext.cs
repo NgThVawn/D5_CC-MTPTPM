@@ -19,6 +19,7 @@ namespace WedBanHang.Models
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<Review> Reviews { get; set; }
         public DbSet<ReviewImage> ReviewImages { get; set; }
+        public DbSet<Message> Messages { get; set; }
         public DbSet<Promotion> Promotions { get; set; }
         public DbSet<PromotionProduct> PromotionProducts { get; set; }
         public DbSet<PromotionCategory> PromotionCategories { get; set; }
